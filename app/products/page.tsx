@@ -40,10 +40,12 @@ import {
   Trash2,
   Search,
   ChevronDown,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Plus
 } from "lucide-react";
 import { 
   getProducts, 
+  createProduct,
   updateProduct,
   deleteProduct,
   ProductData 
@@ -61,6 +63,17 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [minStock, setMinStock] = useState("");
   const [maxStock, setMaxStock] = useState("");
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  
+  // Add product form state
+  const [addForm, setAddForm] = useState({
+    name: "",
+    category: "",
+    purchasePrice: "",
+    sellingPrice: "",
+    stock: "0",
+    supplierName: "",
+  });
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -140,6 +153,38 @@ export default function ProductsPage() {
     }
   }
 
+  // Handle add product
+  async function handleAddProduct(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    const result = await createProduct({
+      name: addForm.name,
+      category: addForm.category,
+      purchasePrice: parseFloat(addForm.purchasePrice) || 0,
+      sellingPrice: parseFloat(addForm.sellingPrice) || 0,
+      stock: parseInt(addForm.stock) || 0,
+      supplierName: addForm.supplierName,
+    });
+
+    if (result.success) {
+      setIsAddOpen(false);
+      setAddForm({
+        name: "",
+        category: "",
+        purchasePrice: "",
+        sellingPrice: "",
+        stock: "0",
+        supplierName: "",
+      });
+      loadProducts();
+    } else {
+      setError(result.error || "Failed to add product");
+    }
+    setSubmitting(false);
+  }
+
   // Get unique categories
   const uniqueCategories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
@@ -200,14 +245,103 @@ export default function ProductsPage() {
                 <p className="text-muted-foreground">View and manage all products</p>
               </div>
             </div>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex items-center gap-4">
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-primary hover:bg-primary/90">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Product
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New Product</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleAddProduct} className="space-y-4">
+                    <div>
+                      <Label htmlFor="add-name">Product Name *</Label>
+                      <Input
+                        id="add-name"
+                        value={addForm.name}
+                        onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                        placeholder="Enter product name"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="add-category">Category</Label>
+                      <Input
+                        id="add-category"
+                        value={addForm.category}
+                        onChange={(e) => setAddForm({ ...addForm, category: e.target.value })}
+                        placeholder="e.g., Sofa, Bed, Table"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="add-purchasePrice">Purchase Price</Label>
+                        <Input
+                          id="add-purchasePrice"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={addForm.purchasePrice}
+                          onChange={(e) => setAddForm({ ...addForm, purchasePrice: e.target.value })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="add-sellingPrice">Selling Price</Label>
+                        <Input
+                          id="add-sellingPrice"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={addForm.sellingPrice}
+                          onChange={(e) => setAddForm({ ...addForm, sellingPrice: e.target.value })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="add-stock">Stock</Label>
+                        <Input
+                          id="add-stock"
+                          type="number"
+                          min="0"
+                          value={addForm.stock}
+                          onChange={(e) => setAddForm({ ...addForm, stock: e.target.value })}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="add-supplierName">Supplier Name</Label>
+                        <Input
+                          id="add-supplierName"
+                          value={addForm.supplierName}
+                          onChange={(e) => setAddForm({ ...addForm, supplierName: e.target.value })}
+                          placeholder="Supplier name"
+                        />
+                      </div>
+                    </div>
+                    {error && <p className="text-destructive text-sm">{error}</p>}
+                    <Button type="submit" className="w-full" disabled={submitting}>
+                      {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Add Product
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>

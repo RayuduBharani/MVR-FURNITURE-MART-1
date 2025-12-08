@@ -35,6 +35,7 @@ export type PurchaseListItem = {
   date: string;
   supplierName: string;
   productName: string;
+  productId: string;
   quantity: number;
   pricePerUnit: number;
   total: number;
@@ -156,6 +157,7 @@ export async function getPurchases(
         _id: purchase._id.toString(),
         date: purchase.date.toISOString(),
         supplierName: purchase.supplierName,
+        productId: purchase.productId.toString(),
         productName: (purchase.productId as unknown as { name: string })?.name || "Unknown",
         quantity: purchase.quantity,
         pricePerUnit: purchase.pricePerUnit,
@@ -198,6 +200,7 @@ export async function getPurchasesByProduct(
         _id: purchase._id.toString(),
         date: purchase.date.toISOString(),
         supplierName: purchase.supplierName,
+        productId: purchase.productId.toString(),
         productName: product.name,
         quantity: purchase.quantity,
         pricePerUnit: purchase.pricePerUnit,

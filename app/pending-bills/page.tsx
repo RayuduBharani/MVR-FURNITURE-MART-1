@@ -226,7 +226,7 @@ export default function PendingBillsPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              Pending Bills {filterType === "monthly" ? `(${selectedMonth})` : filterType === "yearly" ? `(FY ${selectedFY}-${(parseInt(selectedFY) + 1) % 100})` : ""}
+              Pending Bills {filterType === "monthly" ? `(${selectedMonth})` : filterType === "yearly" ? `(${selectedFY})` : ""}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -251,7 +251,7 @@ export default function PendingBillsPage() {
                   {filteredPurchases.map((purchase) => (
                     <TableRow key={purchase._id}>
                       <TableCell>{new Date(purchase.date).toLocaleDateString()}</TableCell>
-                      <TableCell className="font-medium">{getProductName(purchase.productId)}</TableCell>
+                      <TableCell className="font-medium">{getProductName(purchase.productId) || "Unknown"}</TableCell>
                       <TableCell className="text-right">₹{purchase.total.toFixed(2)}</TableCell>
                       <TableCell className="text-right text-green-600">₹{purchase.paidAmount.toFixed(2)}</TableCell>
                       <TableCell className="text-right text-destructive font-semibold">

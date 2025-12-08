@@ -34,7 +34,7 @@ const features = [
   {
     name: "Billing & Sales",
     icon: ShoppingCart,
-    href: "/billing",
+    href: "/sales",
     description: "Create professional invoices and track all sales transactions",
   },
   {
@@ -169,7 +169,7 @@ export default function Home() {
               />
               
               {/* Overlay Gradient */}
-              <div className={`absolute inset-0 bg-gradient-to-r ${item.gradient} opacity-60`} />
+              <div className={`absolute inset-0 bg-linear-to-r ${item.gradient} opacity-60`} />
               <div className="absolute inset-0 bg-black/20" />
 
               {/* Content */}
@@ -256,7 +256,7 @@ export default function Home() {
                   <Card className="group h-full border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden">
                     <CardContent className="p-0">
                       {/* Icon Background */}
-                      <div className="h-40 bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center group-hover:from-orange-200 group-hover:to-orange-100 transition">
+                      <div className="h-40 bg-linear-to-br from-orange-100 to-orange-50 flex items-center justify-center group-hover:from-orange-200 group-hover:to-orange-100 transition">
                         <Icon className="w-16 h-16 text-orange-500" />
                       </div>
 
