@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,85 +18,72 @@ import {
   Loader2,
   Calendar,
   TrendingUp,
+  DollarSign,
 } from "lucide-react";
 import {
-  getPurchasesByProduct,
+  getPendingPurchasesWithFilters,
+  getPendingBillsStats,
   PurchaseListItem,
+  PendingBillsStats,
 } from "@/actions/purchase-actions";
-import { getProducts, ProductData } from "@/actions/product-actions";
+import { PendingBillPaymentDialog } from "@/components/PendingBillPaymentDialog";
 
 export default function PendingBillsPage() {
   const [purchases, setPurchases] = useState<PurchaseListItem[]>([]);
-  const [products, setProducts] = useState<ProductData[]>([]);
+  const [stats, setStats] = useState<PendingBillsStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<"all" | "monthly" | "yearly">("all");
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
   const currentDate = new Date();
   const currentFY = currentDate.getMonth() >= 3 ? currentDate.getFullYear() : currentDate.getFullYear() - 1;
-  const [selectedFY, setSelectedFY] = useState<string>(currentFY.toString());
+  const [selectedFY, setSelectedFY] = useState<number>(currentFY);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [groupBySupplier, setGroupBySupplier] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [productsRes] = await Promise.all([getProducts()]);
+      const dateFilter = 
+        filterType === "monthly" 
+          ? { type: "monthly" as const, month: selectedMonth }
+          : filterType === "yearly"
+          ? { type: "yearly" as const, year: selectedFY }
+          : { type: "all" as const };
+
+      const [purchasesRes, statsRes] = await Promise.all([
+        getPendingPurchasesWithFilters(dateFilter),
+        getPendingBillsStats(dateFilter),
+      ]);
       
-      if (productsRes.success && productsRes.data) {
-        setProducts(productsRes.data);
-        
-        // Fetch purchases for all products
-        const allPurchases: PurchaseListItem[] = [];
-        for (const product of productsRes.data) {
-          const purchasesRes = await getPurchasesByProduct(product._id);
-          if (purchasesRes.success && purchasesRes.data) {
-            allPurchases.push(...purchasesRes.data);
-          }
-        }
-        setPurchases(allPurchases);
+      if (purchasesRes.success && purchasesRes.data) {
+        setPurchases(purchasesRes.data);
       }
-    } catch {
-      console.error("Failed to load data");
+      
+      if (statsRes.success && statsRes.data) {
+        setStats(statsRes.data);
+      }
+    } catch (error) {
+      console.error("Failed to load data:", error);
     } finally {
       setLoading(false);
     }
-  }
+  }, [filterType, selectedMonth, selectedFY]);
 
-  // Filter pending purchases
-  const pendingPurchases = purchases.filter(p => p.status === "PENDING" && p.pendingAmount > 0);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  // Apply time filter
-  const filteredPurchases = pendingPurchases.filter((purchase) => {
-    const purchaseDate = new Date(purchase.date);
-    
-    if (filterType === "monthly") {
-      const purchaseMonth = purchaseDate.toISOString().slice(0, 7);
-      return purchaseMonth === selectedMonth;
-    }
-    
-    if (filterType === "yearly") {
-      // Financial year: April (month 3) to March (month 2)
-      const purchaseMonth = purchaseDate.getMonth();
-      const purchaseYear = purchaseDate.getFullYear();
-      
-      const fy = purchaseMonth >= 3 ? purchaseYear : purchaseYear - 1;
-      return fy.toString() === selectedFY;
-    }
-    
-    return true;
-  });
+  const handlePaymentSuccess = () => {
+    setShowPaymentDialog(false);
+    setSelectedPurchaseId(null);
+    loadData();
+  };
 
-  // Calculate totals
-  const totalPending = filteredPurchases.reduce((sum, p) => sum + p.pendingAmount, 0);
-  const totalPurchases = filteredPurchases.length;
-  const averageBill = totalPurchases > 0 ? totalPending / totalPurchases : 0;
-
-  // Get product name
-  function getProductName(productId: string) {
-    return products.find(p => p._id === productId)?.name || "Unknown Product";
-  }
+  const handleMakePayment = (purchaseId: string) => {
+    setSelectedPurchaseId(purchaseId);
+    setShowPaymentDialog(true);
+  };
 
   if (loading) {
     return (
@@ -128,28 +115,41 @@ export default function PendingBillsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Pending Amount</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Total Pending Amount
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{totalPending.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-destructive">
+                ₹{stats?.totalPending.toFixed(2) || "0.00"}
+              </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Pending Bills</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Pending Bills
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalPurchases}</div>
+              <div className="text-2xl font-bold">{stats?.billCount || 0}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Average Bill Amount</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Average Bill Amount
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{averageBill.toFixed(2)}</div>
+              <div className="text-2xl font-bold">
+                ₹{stats?.averageBill.toFixed(2) || "0.00"}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -205,13 +205,13 @@ export default function PendingBillsPage() {
                 <label className="text-sm font-medium">Select Financial Year</label>
                 <select
                   value={selectedFY}
-                  onChange={(e) => setSelectedFY(e.target.value)}
+                  onChange={(e) => setSelectedFY(parseInt(e.target.value))}
                   className="mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground w-full"
                 >
                   {[...Array(10)].map((_, i) => {
                     const fy = currentFY - i;
                     return (
-                      <option key={fy} value={fy.toString()}>
+                      <option key={fy} value={fy}>
                         FY {fy}-{(fy + 1) % 100}
                       </option>
                     );
@@ -222,53 +222,136 @@ export default function PendingBillsPage() {
           </CardContent>
         </Card>
 
+        {/* Supplier Grouping */}
+        {stats && stats.bySupplier.length > 0 && (
+          <Card className="mb-6 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Pending by Supplier</CardTitle>
+                <Button
+                  variant={groupBySupplier ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGroupBySupplier(!groupBySupplier)}
+                >
+                  {groupBySupplier ? "Show All" : "Group View"}
+                </Button>
+              </div>
+            </CardHeader>
+            {groupBySupplier && (
+              <CardContent>
+                <div className="space-y-3">
+                  {stats.bySupplier.map((supplier, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div>
+                        <div className="font-medium">{supplier.supplierName}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {supplier.count} {supplier.count === 1 ? "bill" : "bills"}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-destructive">
+                          ₹{supplier.totalPending.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
+
         {/* Pending Bills Table */}
-        <Card>
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>
-              Pending Bills {filterType === "monthly" ? `(${selectedMonth})` : filterType === "yearly" ? `(${selectedFY})` : ""}
+              Pending Bills {filterType === "monthly" ? `(${selectedMonth})` : filterType === "yearly" ? `(FY ${selectedFY}-${selectedFY + 1})` : ""}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredPurchases.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No pending bills found for the selected period.
+            {purchases.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <DollarSign className="mx-auto h-12 w-12 text-muted-foreground/40 mb-4" />
+                <p className="text-base font-medium">No pending bills found</p>
+                <p className="text-sm mt-1">
+                  {filterType !== "all" 
+                    ? "Try selecting a different time period."
+                    : "All supplier payments are up to date."}
+                </p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="text-right">Total Amount</TableHead>
-                    <TableHead className="text-right">Paid Amount</TableHead>
-                    <TableHead className="text-right">Pending Amount</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPurchases.map((purchase) => (
-                    <TableRow key={purchase._id}>
-                      <TableCell>{new Date(purchase.date).toLocaleDateString()}</TableCell>
-                      <TableCell className="font-medium">{getProductName(purchase.productId) || "Unknown"}</TableCell>
-                      <TableCell className="text-right">₹{purchase.total.toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-green-600">₹{purchase.paidAmount.toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-destructive font-semibold">
-                        ₹{purchase.pendingAmount.toFixed(2)}
-                      </TableCell>
-                      <TableCell>{purchase.supplierName || "-"}</TableCell>
-                      <TableCell>
-                        <Badge variant="destructive">{purchase.status}</Badge>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableHead className="font-medium">Date</TableHead>
+                      <TableHead className="font-medium">Product</TableHead>
+                      <TableHead className="text-right font-medium">Total Amount</TableHead>
+                      <TableHead className="text-right font-medium">Paid Amount</TableHead>
+                      <TableHead className="text-right font-medium">Pending Amount</TableHead>
+                      <TableHead className="font-medium">Supplier</TableHead>
+                      <TableHead className="font-medium">Status</TableHead>
+                      <TableHead className="text-center font-medium">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {purchases.map((purchase) => (
+                      <TableRow key={purchase._id}>
+                        <TableCell className="font-medium">
+                          {new Date(purchase.date).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </TableCell>
+                        <TableCell className="font-medium">{purchase.productName}</TableCell>
+                        <TableCell className="text-right">₹{purchase.total.toFixed(2)}</TableCell>
+                        <TableCell className="text-right text-green-600 font-semibold">
+                          ₹{purchase.paidAmount.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right text-destructive font-bold">
+                          ₹{purchase.pendingAmount.toFixed(2)}
+                        </TableCell>
+                        <TableCell>{purchase.supplierName || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant="destructive">{purchase.status}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleMakePayment(purchase._id)}
+                              className="gap-1"
+                            >
+                              <DollarSign className="h-3.5 w-3.5" />
+                              Pay
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
       </main>
+
+      {/* Payment Dialog */}
+      {selectedPurchaseId && (
+        <PendingBillPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          purchaseId={selectedPurchaseId}
+          purchase={purchases.find(p => p._id === selectedPurchaseId)}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }

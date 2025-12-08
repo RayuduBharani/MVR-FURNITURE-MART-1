@@ -41,13 +41,14 @@ function serializePayment(payment: IPayment): PaymentData {
 export async function addPayment(formData: {
   purchaseId: string;
   amount: number;
+  paymentDate?: Date;
   paymentMethod?: string;
   notes?: string;
 }): Promise<ActionResponse<PaymentData>> {
   try {
     await connectDB();
 
-    const { purchaseId, amount, paymentMethod, notes } = formData;
+    const { purchaseId, amount, paymentDate, paymentMethod, notes } = formData;
 
     // Validations
     if (!mongoose.Types.ObjectId.isValid(purchaseId)) {
@@ -78,7 +79,7 @@ export async function addPayment(formData: {
       purchaseId,
       productId: purchase.productId,
       amount,
-      paymentDate: new Date(),
+      paymentDate: paymentDate || new Date(),
       paymentMethod: paymentMethod?.trim(),
       notes: notes?.trim(),
     });
@@ -95,6 +96,7 @@ export async function addPayment(formData: {
 
     revalidatePath("/stock");
     revalidatePath("/products");
+    revalidatePath("/pending-bills");
 
     return { success: true, data: serializePayment(payment) };
   } catch (error) {

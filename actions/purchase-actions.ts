@@ -303,3 +303,161 @@ export async function getTotalStockPurchased(
     return { success: false, error: "Failed to fetch total stock purchased" };
   }
 }
+
+// GET PENDING PURCHASES WITH FILTERS (Optimized for Pending Bills page)
+export async function getPendingPurchasesWithFilters(
+  dateFilter?: {
+    type: "monthly" | "yearly" | "all";
+    month?: string;
+    year?: number;
+  }
+): Promise<ActionResponse<PurchaseListItem[]>> {
+  try {
+    await connectDB();
+
+    const query: any = { status: "PENDING" };
+
+    // Server-side date filtering
+    if (dateFilter?.type === "monthly" && dateFilter.month) {
+      const [year, month] = dateFilter.month.split("-");
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
+      query.date = { $gte: startDate, $lte: endDate };
+    }
+
+    if (dateFilter?.type === "yearly" && dateFilter.year !== undefined) {
+      // Financial year: April to March
+      const fyStart = new Date(dateFilter.year, 3, 1); // April 1st
+      const fyEnd = new Date(dateFilter.year + 1, 2, 31, 23, 59, 59, 999); // March 31st
+      query.date = { $gte: fyStart, $lte: fyEnd };
+    }
+
+    // Also filter for pending amount > 0
+    query.$expr = { $gt: [{ $subtract: ["$total", "$paidAmount"] }, 0] };
+
+    const purchases = await Purchase.find(query)
+      .populate("productId", "name")
+      .sort({ date: -1 });
+
+    const data: PurchaseListItem[] = purchases.map((purchase) => {
+      const paidAmount = purchase.paidAmount || 0;
+      return {
+        _id: purchase._id.toString(),
+        date: purchase.date.toISOString(),
+        supplierName: purchase.supplierName,
+        productId: purchase.productId.toString(),
+        productName: (purchase.productId as unknown as { name: string })?.name || "Unknown",
+        quantity: purchase.quantity,
+        pricePerUnit: purchase.pricePerUnit,
+        total: purchase.total,
+        status: purchase.status,
+        initialPayment: purchase.initialPayment || 0,
+        paidAmount: paidAmount,
+        pendingAmount: purchase.total - paidAmount,
+      };
+    });
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error fetching pending purchases:", error);
+    return { success: false, error: "Failed to fetch pending purchases" };
+  }
+}
+
+// GET PENDING BILLS SUMMARY STATS
+export type PendingBillsStats = {
+  totalPending: number;
+  billCount: number;
+  averageBill: number;
+  bySupplier: { supplierName: string; totalPending: number; count: number }[];
+};
+
+export async function getPendingBillsStats(
+  dateFilter?: {
+    type: "monthly" | "yearly" | "all";
+    month?: string;
+    year?: number;
+  }
+): Promise<ActionResponse<PendingBillsStats>> {
+  try {
+    await connectDB();
+
+    const matchQuery: any = { status: "PENDING" };
+
+    // Apply date filters
+    if (dateFilter?.type === "monthly" && dateFilter.month) {
+      const [year, month] = dateFilter.month.split("-");
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
+      matchQuery.date = { $gte: startDate, $lte: endDate };
+    }
+
+    if (dateFilter?.type === "yearly" && dateFilter.year !== undefined) {
+      const fyStart = new Date(dateFilter.year, 3, 1);
+      const fyEnd = new Date(dateFilter.year + 1, 2, 31, 23, 59, 59, 999);
+      matchQuery.date = { $gte: fyStart, $lte: fyEnd };
+    }
+
+    const [totalStats, supplierStats] = await Promise.all([
+      // Total stats
+      Purchase.aggregate([
+        { $match: matchQuery },
+        {
+          $project: {
+            pendingAmount: { $subtract: ["$total", "$paidAmount"] },
+          },
+        },
+        { $match: { pendingAmount: { $gt: 0 } } },
+        {
+          $group: {
+            _id: null,
+            totalPending: { $sum: "$pendingAmount" },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      // By supplier
+      Purchase.aggregate([
+        { $match: matchQuery },
+        {
+          $project: {
+            supplierName: 1,
+            pendingAmount: { $subtract: ["$total", "$paidAmount"] },
+          },
+        },
+        { $match: { pendingAmount: { $gt: 0 } } },
+        {
+          $group: {
+            _id: "$supplierName",
+            totalPending: { $sum: "$pendingAmount" },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { totalPending: -1 } },
+      ]),
+    ]);
+
+    const total = totalStats[0]?.totalPending || 0;
+    const count = totalStats[0]?.count || 0;
+    const average = count > 0 ? total / count : 0;
+
+    const bySupplier = supplierStats.map((stat) => ({
+      supplierName: stat._id || "Unknown",
+      totalPending: stat.totalPending,
+      count: stat.count,
+    }));
+
+    return {
+      success: true,
+      data: {
+        totalPending: total,
+        billCount: count,
+        averageBill: average,
+        bySupplier,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching pending bills stats:", error);
+    return { success: false, error: "Failed to fetch pending bills stats" };
+  }
+}
