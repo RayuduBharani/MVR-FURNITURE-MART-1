@@ -27,23 +27,23 @@ export default function CustomerInfoForm({
   setIsPendingBill,
 }: CustomerInfoFormProps) {
   return (
-    <Card className="p-6 border-0 shadow-sm bg-white">
-      <h2 className="text-lg font-semibold mb-4 text-gray-900">Customer Information</h2>
+    <Card className="p-6 shadow-md">
+      <h2 className="text-lg font-semibold mb-4 text-foreground">Customer Information</h2>
       <div className="space-y-4">
         <div>
-          <Label className="text-sm font-medium text-gray-700">Customer Name (Optional)</Label>
+          <Label className="text-sm font-medium text-foreground">Customer Name (Optional)</Label>
           <Input
             placeholder="Enter customer name or leave blank for Walk-in"
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
-            className="mt-2 border-gray-300"
+            className="mt-2"
           />
         </div>
 
         <div>
-          <Label className="text-sm font-medium text-gray-700">Payment Type</Label>
+          <Label className="text-sm font-medium text-foreground">Payment Type</Label>
           <Select value={paymentType} onValueChange={(value) => setPaymentType(value as 'CASH' | 'UPI' | 'CARD' | 'OTHER')}>
-            <SelectTrigger className="mt-2 border-gray-300">
+            <SelectTrigger className="mt-2">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -66,16 +66,16 @@ export default function CustomerInfoForm({
                 setInitialPayment(''); // Clear initial payment when unchecked
               }
             }}
-            className="w-4 h-4 rounded border-gray-300"
+            className="w-4 h-4 rounded"
           />
-          <Label htmlFor="pending" className="text-sm font-medium text-gray-700 cursor-pointer">
+          <Label htmlFor="pending" className="text-sm font-medium text-foreground cursor-pointer">
             Mark as Pending Bill (Partial Payment)
           </Label>
         </div>
 
         {isPendingBill && (
           <div>
-            <Label className="text-sm font-medium text-gray-700">Initial Payment Amount</Label>
+            <Label className="text-sm font-medium text-foreground">Initial Payment Amount</Label>
             <Input
               type="number"
               min="0"
@@ -83,9 +83,9 @@ export default function CustomerInfoForm({
               placeholder="Enter initial payment amount"
               value={initialPayment}
               onChange={(e) => setInitialPayment(e.target.value)}
-              className="mt-2 border-gray-300"
+              className="mt-2"
             />
-            <p className="text-xs text-gray-500 mt-1">Enter the partial amount paid now. Balance will be tracked as pending.</p>
+            <p className="text-xs text-muted-foreground mt-1">Enter the partial amount paid now. Balance will be tracked as pending.</p>
           </div>
         )}
       </div>

@@ -154,7 +154,10 @@ export default function StockPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground font-medium">Loading inventory...</p>
+        </div>
       </div>
     );
   }
@@ -162,8 +165,8 @@ export default function StockPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <header className="bg-card border-b border-border sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/">
@@ -171,15 +174,20 @@ export default function StockPage() {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Stock & Products</h1>
-                <p className="text-muted-foreground">Manage inventory and purchases</p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary">
+                  <Package className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Stock & Inventory</h1>
+                  <p className="text-sm text-muted-foreground">Manage products and track inventory</p>
+                </div>
               </div>
             </div>
             <div className="flex gap-3">
               <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline">
+                  <Button>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Product
                   </Button>
@@ -269,40 +277,49 @@ export default function StockPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Products
-              </CardTitle>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
+              <Package className="w-5 h-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2">
-                <Package className="w-5 h-5 text-primary" />
-                <span className="text-3xl font-bold">{products.length}</span>
-              </div>
+              <div className="text-3xl font-bold text-foreground">{products.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Products in inventory</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pending Bills
-              </CardTitle>
+          
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Low Stock Items</CardTitle>
+              <AlertCircle className="w-5 h-5 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-destructive" />
-                <span className="text-3xl font-bold text-destructive">₹{pendingTotal.toFixed(2)}</span>
-              </div>
+              <div className="text-3xl font-bold text-foreground">{products.filter(p => p.stock <= 5).length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Need restock</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Bills</CardTitle>
+              <AlertCircle className="w-5 h-5 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-foreground">₹{(pendingTotal / 1000).toFixed(1)}K</div>
+              <p className="text-xs text-muted-foreground mt-1">Outstanding amount</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Products List */}
-        <Card className="mb-8">
-          <CardHeader>
+        <Card className="mb-8 shadow-md">
+          <CardHeader className="border-b">
             <div className="flex items-center justify-between">
-              <CardTitle>Products Inventory</CardTitle>
+              <div>
+                <CardTitle className="text-xl font-bold">Products Inventory</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">View and manage all products</p>
+              </div>
               {hasActiveFilters && (
                 <Button
                   variant="outline"
@@ -316,26 +333,26 @@ export default function StockPage() {
               )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 p-6">
             {/* Filters Section */}
-            <div className="border border-border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-hidden">
               {/* Filter Header */}
               <button
                 onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                className="w-full px-4 py-3 bg-muted/50 hover:bg-muted flex items-center justify-between transition-colors"
+                className="w-full px-4 py-3 bg-muted hover:bg-muted/80 flex items-center justify-between transition-colors"
               >
-                <h3 className="font-semibold text-sm">Filters</h3>
+                <h3 className="font-semibold text-sm">Filters & Search</h3>
                 <ChevronDown
-                  className={`w-4 h-4 transition-transform duration-200 ${isFiltersOpen ? "rotate-0" : "-rotate-90"}`}
+                  className={`w-4 h-4 transition-transform duration-200 ${isFiltersOpen ? "rotate-180" : "rotate-0"}`}
                 />
               </button>
 
               {/* Filter Content */}
               {isFiltersOpen && (
-                <div className="bg-muted/30 p-4 space-y-4">
+                <div className="bg-muted/50 p-4 space-y-4 border-t">
                   {/* Search */}
                   <div>
-                    <Label htmlFor="search" className="text-xs">Search by Name</Label>
+                    <Label htmlFor="search" className="text-xs font-medium">Search by Name</Label>
                     <div className="relative mt-1">
                       <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                       <Input
@@ -351,12 +368,12 @@ export default function StockPage() {
                   {/* Category and Supplier filters */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="category" className="text-xs">Category</Label>
+                      <Label htmlFor="category" className="text-xs font-medium">Category</Label>
                       <select
                         id="category"
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
+                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm focus:border-ring focus:ring-1 focus:ring-ring outline-none"
                       >
                         <option value="">All Categories</option>
                         {uniqueCategories.map((cat) => (
@@ -367,12 +384,12 @@ export default function StockPage() {
                       </select>
                     </div>
                     <div>
-                      <Label htmlFor="supplier" className="text-xs">Supplier</Label>
+                      <Label htmlFor="supplier" className="text-xs font-medium">Supplier</Label>
                       <select
                         id="supplier"
                         value={selectedSupplier}
                         onChange={(e) => setSelectedSupplier(e.target.value)}
-                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
+                        className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm focus:border-ring focus:ring-1 focus:ring-ring outline-none"
                       >
                         <option value="">All Suppliers</option>
                         {uniqueSuppliers.map((sup) => (
@@ -385,8 +402,8 @@ export default function StockPage() {
                   </div>
 
                   {/* Results count */}
-                  <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-                    Showing {filteredProducts.length} of {products.length} products
+                  <div className="text-xs text-muted-foreground pt-2 border-t bg-card -mx-4 -mb-4 px-4 py-3 rounded-b-lg">
+                    <span className="font-medium">Showing {filteredProducts.length} of {products.length} products</span>
                   </div>
                 </div>
               )}
@@ -394,48 +411,61 @@ export default function StockPage() {
 
             {/* Products Table */}
             {filteredProducts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                {products.length === 0 
-                  ? "No products yet. Add your first product to get started."
-                  : "No products match your filters. Try adjusting them."}
+              <div className="text-center py-12 bg-muted/50 rounded-lg border-2 border-dashed">
+                <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-foreground font-medium">
+                  {products.length === 0 
+                    ? "No products yet"
+                    : "No products match your filters"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {products.length === 0 
+                    ? "Add your first product to get started."
+                    : "Try adjusting your search or filters."}
+                </p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead className="text-right">Purchase Price</TableHead>
-                    <TableHead className="text-right">Selling Price</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map((product) => (
-                    <TableRow key={product._id}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{product.category || "-"}</TableCell>
-                      <TableCell>{product.supplierName || "-"}</TableCell>
-                      <TableCell className="text-right">₹{product.purchasePrice.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">₹{product.sellingPrice.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant={product.stock > 0 ? "default" : "destructive"}>
-                          {product.stock}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Link href={`/stock/product/${product._id}`}>
-                          <Button size="sm" variant="ghost">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </Link>
-                      </TableCell>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted hover:bg-muted">
+                      <TableHead className="font-semibold">Name</TableHead>
+                      <TableHead className="font-semibold">Category</TableHead>
+                      <TableHead className="font-semibold">Supplier</TableHead>
+                      <TableHead className="text-right font-semibold">Purchase Price</TableHead>
+                      <TableHead className="text-right font-semibold">Selling Price</TableHead>
+                      <TableHead className="text-right font-semibold">Stock</TableHead>
+                      <TableHead className="text-right font-semibold">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProducts.map((product) => (
+                      <TableRow key={product._id}>
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{product.category || "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{product.supplierName || "-"}</TableCell>
+                        <TableCell className="text-right">₹{product.purchasePrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{product.sellingPrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge 
+                            variant={product.stock > 5 ? "default" : product.stock > 0 ? "secondary" : "destructive"}
+                          >
+                            {product.stock}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Link href={`/stock/product/${product._id}`}>
+                            <Button size="sm" variant="ghost">
+                              <Eye className="w-4 h-4 mr-1" />
+                              View
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

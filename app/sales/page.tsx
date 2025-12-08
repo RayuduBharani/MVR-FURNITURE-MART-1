@@ -4,6 +4,16 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { searchProducts, createSale, getSales, makeAdditionalPayment } from '@/actions/sales-actions';
 import jsPDF from 'jspdf';
 import CustomerInfoForm from '@/components/sales/CustomerInfoForm';
@@ -78,6 +88,10 @@ export default function SalesPage() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
   // Search products
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);
@@ -112,12 +126,12 @@ export default function SalesPage() {
   // Add item to cart
   const handleAddToCart = useCallback(() => {
     if (!selectedProduct) {
-      setError('Please select a product');
+      toast.error('Please select a product');
       return;
     }
 
     if (quantity < 1 || quantity > selectedProduct.stock) {
-      setError(`Quantity must be between 1 and ${selectedProduct.stock}`);
+      toast.error(`Quantity must be between 1 and ${selectedProduct.stock}`);
       return;
     }
 
@@ -167,13 +181,26 @@ export default function SalesPage() {
     const finalCustomerName = customerName.trim() || "Walk-in";
 
     if (cart.length === 0) {
-      setError('Cart is empty. Add items before creating bill');
+      toast.error('Cart is empty. Add items before creating bill');
       return;
     }
 
     if (!paymentType) {
-      setError('Payment type is required');
+      toast.error('Payment type is required');
       return;
+    }
+
+    // Validate initial payment if it's a pending bill
+    if (isPendingBill) {
+      const initialPaymentValue = parseFloat(initialPayment) || 0;
+      if (initialPaymentValue < 0) {
+        toast.error('Initial payment cannot be negative');
+        return;
+      }
+      if (initialPaymentValue > totalAmount) {
+        toast.error(`Initial payment (₹${initialPaymentValue.toFixed(2)}) cannot exceed total amount (₹${totalAmount.toFixed(2)})`);
+        return;
+      }
     }
 
     isCreatingBillRef.current = true;
@@ -183,8 +210,9 @@ export default function SalesPage() {
 
     try {
       // If not pending bill, payment is full amount; otherwise use initial payment
+      // Cap initial payment at total amount to prevent negative balance
       const paymentAmount = isPendingBill 
-        ? (parseFloat(initialPayment) || 0) 
+        ? Math.min(parseFloat(initialPayment) || 0, totalAmount)
         : totalAmount;
 
       const result = await createSale({
@@ -202,7 +230,7 @@ export default function SalesPage() {
 
       if (result.success && result.data) {
         const saleData = result.data as Sale;
-        setSuccess(`Bill created successfully! Invoice #${saleData._id}`);
+        toast.success(`Bill created successfully! Invoice #${saleData._id.substring(saleData._id.length - 6)}`);
         
         // Determine where to navigate based on payment status
         const isPending = saleData.status === 'PENDING' || saleData.balanceAmount > 0;
@@ -230,17 +258,17 @@ export default function SalesPage() {
           } catch (pdfError: unknown) {
             const errorMsg = pdfError instanceof Error ? pdfError.message : 'PDF generation error';
             console.error('PDF error:', errorMsg);
-            setError(`PDF Error: ${errorMsg}`);
+            toast.error(`PDF Error: ${errorMsg}`);
           }
         }, 500);
       } else {
         const errorMsg = result.error || 'Failed to create bill';
-        setError(errorMsg);
+        toast.error(errorMsg);
         console.error('Bill creation failed:', errorMsg);
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error creating bill:', errorMessage);
     } finally {
       setLoading(false);
@@ -265,38 +293,37 @@ export default function SalesPage() {
   // Handle EMI Payment
   const handleMakePayment = async () => {
     if (!selectedSaleForPayment || !paymentAmount) {
-      setError('Please enter payment amount');
+      toast.error('Please enter payment amount');
       return;
     }
 
     const amount = parseFloat(paymentAmount);
     if (amount <= 0) {
-      setError('Payment amount must be greater than 0');
+      toast.error('Payment amount must be greater than 0');
       return;
     }
 
     if (amount > selectedSaleForPayment.balanceAmount) {
-      setError(`Payment cannot exceed balance of ₹${selectedSaleForPayment.balanceAmount.toFixed(2)}`);
+      toast.error(`Payment cannot exceed balance of ₹${selectedSaleForPayment.balanceAmount.toFixed(2)}`);
       return;
     }
 
     setPaymentLoading(true);
-    setError('');
 
     try {
       const result = await makeAdditionalPayment(selectedSaleForPayment._id, amount);
       
       if (result.success) {
-        setSuccess(`Payment of ₹${amount.toFixed(2)} recorded successfully!`);
+        toast.success(`Payment of ₹${amount.toFixed(2)} recorded successfully!`);
         setPaymentDialogOpen(false);
         setSelectedSaleForPayment(null);
         setPaymentAmount('');
         fetchSales(); // Refresh sales list
       } else {
-        setError(result.error || 'Failed to record payment');
+        toast.error(result.error || 'Failed to record payment');
       }
     } catch (err) {
-      setError('An error occurred while processing payment');
+      toast.error('An error occurred while processing payment');
       console.error('Payment error:', err);
     } finally {
       setPaymentLoading(false);
@@ -351,12 +378,23 @@ export default function SalesPage() {
 
   const filteredSales = getFilteredSales();
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSales = filteredSales.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
   // Generate and download invoice PDF
   const generateAndDownloadInvoice = useCallback((sale: Sale) => {
     try {
       if (!sale || !sale._id || !sale.items) {
         console.error('Invalid sale data:', sale);
-        setError('Invalid sale data for PDF generation');
+        toast.error('Invalid sale data for PDF generation');
         return;
       }
 
@@ -469,20 +507,21 @@ export default function SalesPage() {
       pdf.text('This is a computer-generated invoice. No signature required.', pageWidth / 2, yPosition, { align: 'center' });
 
       pdf.save(`Invoice-${billNo}.pdf`);
+      toast.success('Invoice downloaded successfully!');
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate PDF';
       console.error('PDF generation error:', errorMessage);
-      setError(`Failed to generate invoice: ${errorMessage}`);
+      toast.error(`Failed to generate invoice: ${errorMessage}`);
     }
   }, []);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-orange-50 via-white to-orange-50 p-4 sm:p-8">
+    <div className="min-h-screen bg-background p-4 sm:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Billing & Sales</h1>
-          <p className="text-gray-600 mt-2">Create and manage customer bills</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Billing & Sales</h1>
+          <p className="text-muted-foreground mt-2">Create and manage customer bills</p>
         </div>
 
         {/* Error/Success Messages */}
@@ -494,20 +533,20 @@ export default function SalesPage() {
         )}
 
         {success && (
-          <Alert className="mb-4 bg-green-50 border-green-200">
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          <Alert className="mb-4 border-green-500 bg-green-50 dark:bg-green-950/20">
+            <AlertDescription className="text-green-800 dark:text-green-400">{success}</AlertDescription>
           </Alert>
         )}
 
         <div className="w-full">
           {/* Tabs */}
-          <div className="flex gap-4 mb-6 border-b border-gray-200">
+          <div className="flex gap-4 mb-6 border-b border-border">
             <button
               onClick={() => setActiveTab('create-bill')}
               className={`px-4 py-2 font-medium transition-colors ${
                 activeTab === 'create-bill'
-                  ? 'text-orange-600 border-b-2 border-orange-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Create Bill
@@ -516,8 +555,8 @@ export default function SalesPage() {
               onClick={() => setActiveTab('view-sales')}
               className={`px-4 py-2 font-medium transition-colors ${
                 activeTab === 'view-sales'
-                  ? 'text-orange-600 border-b-2 border-orange-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               View Sales
@@ -582,7 +621,6 @@ export default function SalesPage() {
                 <Button
                   onClick={() => setStatusFilter('ALL')}
                   variant={statusFilter === 'ALL' ? 'default' : 'outline'}
-                  className={statusFilter === 'ALL' ? 'bg-orange-600 hover:bg-orange-700' : ''}
                 >
                   All ({sales.length})
                 </Button>
@@ -604,28 +642,86 @@ export default function SalesPage() {
 
               {/* Sales List */}
               {loadingSales ? (
-                <div className="text-center py-8 text-gray-600">Loading sales...</div>
+                <div className="text-center py-8 text-muted-foreground">Loading sales...</div>
               ) : filteredSales.length === 0 ? (
-                <div className="text-center py-8 text-gray-600">No sales found</div>
-              ) : statusFilter === 'PENDING' ? (
-                <PendingBillsTable
-                  sales={filteredSales}
-                  onPayEMI={(sale) => {
-                    setSelectedSaleForPayment(sale);
-                    setPaymentDialogOpen(true);
-                  }}
-                />
+                <div className="text-center py-8 text-muted-foreground">No sales found</div>
               ) : (
-                <SalesListWithFilter
-                  sales={filteredSales}
-                  expandedSale={expandedSale}
-                  onToggleExpand={(saleId) => setExpandedSale(expandedSale === saleId ? null : saleId)}
-                  onPayEMI={(sale) => {
-                    setSelectedSaleForPayment(sale);
-                    setPaymentDialogOpen(true);
-                  }}
-                  onDownloadInvoice={generateAndDownloadInvoice}
-                />
+                <>
+                  {statusFilter === 'PENDING' ? (
+                    <PendingBillsTable
+                      sales={paginatedSales}
+                      onPayEMI={(sale) => {
+                        setSelectedSaleForPayment(sale);
+                        setPaymentDialogOpen(true);
+                      }}
+                    />
+                  ) : (
+                    <SalesListWithFilter
+                      sales={paginatedSales}
+                      expandedSale={expandedSale}
+                      onToggleExpand={(saleId) => setExpandedSale(expandedSale === saleId ? null : saleId)}
+                      onPayEMI={(sale) => {
+                        setSelectedSaleForPayment(sale);
+                        setPaymentDialogOpen(true);
+                      }}
+                      onDownloadInvoice={generateAndDownloadInvoice}
+                    />
+                  )}
+
+                  {/* Pagination */}
+                  {filteredSales.length > itemsPerPage && (
+                    <div className="mt-6 flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {startIndex + 1} to {Math.min(endIndex, filteredSales.length)} of {filteredSales.length} sales
+                      </p>
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          
+                          {[...Array(totalPages)].map((_, i) => {
+                            const page = i + 1;
+                            if (
+                              page === 1 ||
+                              page === totalPages ||
+                              (page >= currentPage - 1 && page <= currentPage + 1)
+                            ) {
+                              return (
+                                <PaginationItem key={page}>
+                                  <PaginationLink
+                                    onClick={() => setCurrentPage(page)}
+                                    isActive={currentPage === page}
+                                    className="cursor-pointer"
+                                  >
+                                    {page}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              );
+                            } else if (page === currentPage - 2 || page === currentPage + 2) {
+                              return (
+                                <PaginationItem key={page}>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              );
+                            }
+                            return null;
+                          })}
+                          
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

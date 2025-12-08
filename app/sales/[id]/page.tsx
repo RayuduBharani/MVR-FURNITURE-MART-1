@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';    
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';    
 import { getSaleById, makeAdditionalPayment } from '@/actions/sales-actions';
 import jsPDF from 'jspdf';
 import SaleDetailsHeader from '@/components/sales/SaleDetailsHeader';
@@ -84,17 +85,16 @@ export default function SaleDetailsPage() {
 
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || amount <= 0) {
-      setPaymentError('Please enter a valid amount');
+      toast.error('Please enter a valid amount');
       return;
     }
 
     if (amount > sale.balanceAmount) {
-      setPaymentError(`Payment cannot exceed balance of ₹${sale.balanceAmount.toFixed(2)}`);
+      toast.error(`Payment cannot exceed balance of ₹${sale.balanceAmount.toFixed(2)}`);
       return;
     }
 
     setPaymentLoading(true);
-    setPaymentError('');
 
     try {
       const result = await makeAdditionalPayment(sale._id, amount, paymentType);
@@ -103,7 +103,7 @@ export default function SaleDetailsPage() {
         // Check if this payment completes the balance
         const willBePaid = sale.balanceAmount - amount <= 0;
         
-        setPaymentSuccess(
+        toast.success(
           willBePaid 
             ? `Payment of ₹${amount.toFixed(2)} recorded successfully! Sale is now fully paid.`
             : `Payment of ₹${amount.toFixed(2)} via ${paymentType} recorded successfully!`
@@ -112,13 +112,11 @@ export default function SaleDetailsPage() {
         setPaymentAmount('');
         setPaymentType('CASH');
         fetchSale(); // Refresh sale data
-        
-        setTimeout(() => setPaymentSuccess(''), 5000);
       } else {
-        setPaymentError(result.error || 'Failed to record payment');
+        toast.error(result.error || 'Failed to record payment');
       }
     } catch (err) {
-      setPaymentError('An error occurred while processing payment');
+      toast.error('An error occurred while processing payment');
       console.error('Payment error:', err);
     } finally {
       setPaymentLoading(false);
@@ -243,9 +241,10 @@ export default function SaleDetailsPage() {
       pdf.text('Thank you for your business!', pageWidth / 2, yPosition, { align: 'center' });
       
       pdf.save(`Invoice_${sale.customerName}_${new Date(sale.date).toLocaleDateString().replace(/\//g, '-')}.pdf`);
+      toast.success('Invoice downloaded successfully!');
     } catch (err) {
       console.error('Error generating PDF:', err);
-      setError('Failed to generate invoice');
+      toast.error('Failed to generate invoice');
     }
   }, [sale]);
 
@@ -387,17 +386,18 @@ export default function SaleDetailsPage() {
       pdf.text('This is a computer-generated receipt and does not require a signature.', pageWidth / 2, yPosition, { align: 'center' });
       
       pdf.save(`Payment_Receipt_${sale.customerName}_${paymentIndex + 1}_${new Date(payment.date).toLocaleDateString().replace(/\//g, '-')}.pdf`);
+      toast.success('Payment receipt downloaded successfully!');
     } catch (err) {
       console.error('Error generating payment receipt:', err);
-      setError('Failed to generate payment receipt');
+      toast.error('Failed to generate payment receipt');
     }
   }, [sale]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-orange-50 to-amber-50 p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center py-12 text-gray-600">Loading sale details...</div>
+          <div className="text-center py-12 text-muted-foreground">Loading sale details...</div>
         </div>
       </div>
     );
@@ -405,20 +405,20 @@ export default function SaleDetailsPage() {
 
   if (error || !sale) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-orange-50 to-amber-50 p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-4xl mx-auto">
           <Button onClick={() => router.back()} variant="outline" className="mb-6">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div className="text-center py-12 text-red-600">{error || 'Sale not found'}</div>
+          <div className="text-center py-12 text-destructive">{error || 'Sale not found'}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-orange-50 to-amber-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <SaleDetailsHeader
@@ -426,13 +426,6 @@ export default function SaleDetailsPage() {
           hasBalance={sale.balanceAmount > 0}
           onAddPayment={() => setPaymentDialogOpen(true)}
         />
-
-        {/* Success Message */}
-        {paymentSuccess && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-            {paymentSuccess}
-          </div>
-        )}
 
         {/* Customer Info Card */}
         <SaleCustomerCard

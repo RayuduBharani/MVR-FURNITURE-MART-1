@@ -1,14 +1,16 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI || '';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mvr_furniture';
 
 if (!MONGODB_URI) {
   throw new Error('MONGODB_URI environment variable is not defined');
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let cached = (global as any).mongoose;
 
 if (!cached) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cached = (global as any).mongoose = { conn: null, promise: null };
 }
 

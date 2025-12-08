@@ -33,6 +33,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { 
   ArrowLeft,
   Loader2,
@@ -64,6 +73,8 @@ export default function ProductsPage() {
   const [minStock, setMinStock] = useState("");
   const [maxStock, setMaxStock] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12);
   
   // Add product form state
   const [addForm, setAddForm] = useState({
@@ -216,14 +227,29 @@ export default function ProductsPage() {
     setSelectedCategory("");
     setMinStock("");
     setMaxStock("");
+    setCurrentPage(1);
   }
 
   const hasActiveFilters = searchQuery || selectedCategory || minStock || maxStock;
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, minStock, maxStock]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground font-medium">Loading products...</p>
+        </div>
       </div>
     );
   }
@@ -231,8 +257,8 @@ export default function ProductsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <header className="bg-card border-b border-border sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/">
@@ -240,12 +266,17 @@ export default function ProductsPage() {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Products Catalog</h1>
-                <p className="text-muted-foreground">View and manage all products</p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary">
+                  <SlidersHorizontal className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Products Catalog</h1>
+                  <p className="text-sm text-muted-foreground">View and manage all products</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -257,7 +288,7 @@ export default function ProductsPage() {
               </div>
               <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-primary hover:bg-primary/90">
+                  <Button>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Product
                   </Button>
@@ -355,56 +386,64 @@ export default function ProductsPage() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Products</CardTitle>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
+              <SlidersHorizontal className="w-5 h-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{products.length}</div>
+              <div className="text-3xl font-bold text-foreground">{products.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Products in catalog</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Stock</CardTitle>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Stock</CardTitle>
+              <Search className="w-5 h-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{products.reduce((sum, p) => sum + p.stock, 0)} units</div>
+              <div className="text-3xl font-bold text-foreground">{products.reduce((sum, p) => sum + p.stock, 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1">Units available</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Inventory Value</CardTitle>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Inventory Value</CardTitle>
+              <ChevronDown className="w-5 h-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{(products.reduce((sum, p) => sum + (p.purchasePrice * p.stock), 0)).toFixed(2)}</div>
+              <div className="text-3xl font-bold text-foreground">₹{(products.reduce((sum, p) => sum + (p.purchasePrice * p.stock), 0) / 1000).toFixed(1)}K</div>
+              <p className="text-xs text-muted-foreground mt-1">Total inventory worth</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Out of Stock</CardTitle>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Out of Stock</CardTitle>
+              <Trash2 className="w-5 h-5 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{products.filter(p => p.stock === 0).length}</div>
+              <div className="text-3xl font-bold text-foreground">{products.filter(p => p.stock === 0).length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Need restock</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Filters Section */}
-        <div className="mb-6">
+        <Card className="mb-6 shadow-md">
           <button
             onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-            className="flex items-center gap-2 px-4 py-2 bg-muted/50 hover:bg-muted rounded-lg transition-colors mb-4 w-full"
+            className="flex items-center gap-2 px-4 py-3 bg-muted hover:bg-muted/80 transition-colors w-full rounded-t-lg"
           >
             <SlidersHorizontal className="w-4 h-4" />
-            <span className="font-medium">Filters</span>
+            <span className="font-semibold text-sm">Filters & Search</span>
             <ChevronDown
-              className={`w-4 h-4 ml-auto transition-transform duration-200 ${isFiltersOpen ? "rotate-0" : "-rotate-90"}`}
+              className={`w-4 h-4 ml-auto transition-transform duration-200 ${isFiltersOpen ? "rotate-180" : "rotate-0"}`}
             />
           </button>
 
           {isFiltersOpen && (
-            <Card className="mb-4">
+            <div className="border-t">
               <CardContent className="pt-6">
                 <div className="space-y-4">
                   {/* Category Filter */}
@@ -459,27 +498,38 @@ export default function ProductsPage() {
                   )}
                 </div>
               </CardContent>
-            </Card>
+            </div>
           )}
-        </div>
+        </Card>
 
         {/* Product Cards Grid */}
         <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">All Products in Shop</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">All Products</h2>
+              <p className="text-sm text-muted-foreground mt-1">Browse and manage your product catalog</p>
+            </div>
+          </div>
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              {searchQuery ? "No products match your search." : "No products yet."}
+            <div className="text-center py-12 bg-muted/50 rounded-lg border-2 border-dashed">
+              <SlidersHorizontal className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+              <p className="text-foreground font-medium">
+                {searchQuery ? "No products match your search" : "No products yet"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {searchQuery ? "Try adjusting your search or filters." : "Add your first product to get started."}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {filteredProducts.map((product) => {
+              {paginatedProducts.map((product) => {
                 const profit = product.sellingPrice - product.purchasePrice;
                 return (
-                  <Card key={product._id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <Card key={product._id} className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
                     <CardContent className="pt-4">
-                      <h3 className="font-semibold text-lg mb-2 truncate">{product.name}</h3>
+                      <h3 className="font-semibold text-lg mb-2 truncate text-foreground">{product.name}</h3>
                       {product.category && (
-                        <Badge className="mb-3 bg-blue-100 text-blue-700 hover:bg-blue-100">
+                        <Badge variant="secondary" className="mb-3">
                           {product.category}
                         </Badge>
                       )}
@@ -503,13 +553,13 @@ export default function ProductsPage() {
                           </span>
                         </div>
                         {product.stock <= 2 && product.stock > 0 && (
-                          <div className="bg-yellow-100 border border-yellow-200 rounded p-2 text-yellow-800 text-xs font-medium">
+                          <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded p-2 text-yellow-800 dark:text-yellow-400 text-xs font-medium">
                             ⚠️ Low Stock
                           </div>
                         )}
                       </div>
                     </CardContent>
-                    <div className="px-4 pb-4 pt-2 border-t flex gap-2">
+                    <div className="px-4 pb-4 pt-2 border-t bg-muted/30 flex gap-2">
                       <Link href={`/stock/product/${product._id}`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full">
                           View
@@ -526,7 +576,7 @@ export default function ProductsPage() {
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="flex-1 text-destructive">
+                          <Button variant="outline" size="sm" className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground">
                             <Trash2 className="w-3 h-3 mr-1" />
                             Delete
                           </Button>
@@ -553,6 +603,61 @@ export default function ProductsPage() {
                     </Card>
                   );
               })}
+            </div>
+          )}
+          
+          {/* Pagination */}
+          {filteredProducts.length > itemsPerPage && (
+            <div className="mt-8 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length} products
+              </p>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  
+                  {[...Array(totalPages)].map((_, i) => {
+                    const page = i + 1;
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    return null;
+                  })}
+                  
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
         </div>

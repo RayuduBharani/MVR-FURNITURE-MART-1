@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { 
   Package, 
@@ -11,266 +11,292 @@ import {
   Banknote,
   BarChart3,
   Store,
-  Search,
-  Heart,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight
+  TrendingUp,
+  TrendingDown,
+  IndianRupee,
+  Activity,
+  FileText,
+  AlertCircle,
+  Clock,
+  ArrowUpRight,
+  Loader2
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { getDashboardStats, getRecentActivities, type DashboardStats, type RecentActivity } from "@/actions/dashboard-actions";
 
-const features = [
-  {
-    name: "Stock & Products",
-    icon: Package,
-    href: "/stock",
-    description: "Manage products, add stock, and track inventory efficiently",
-  },
-  {
-    name: "Products Catalog",
-    icon: Sofa,
-    href: "/products",
-    description: "View all products available in the shop",
-  },
-  {
-    name: "Billing & Sales",
-    icon: ShoppingCart,
-    href: "/sales",
-    description: "Create professional invoices and track all sales transactions",
-  },
-  {
-    name: "Pending Bills",
-    icon: ClipboardList,
-    href: "/pending-bills",
-    description: "Manage and track supplier pending payments easily",
-  },
-  {
-    name: "Expenditures",
-    icon: Banknote,
-    href: "/expenditures",
-    description: "Track all shop expenses and operational costs",
-  },
-  {
-    name: "Monthly Reports",
-    icon: BarChart3,
-    href: "/reports",
-    description: "View detailed financial reports and business analytics",
-  },
-];
-
-const carouselItems = [
-  {
-    id: 1,
-    title: "Transform Your Living Space",
-    description: "Discover our curated collection of premium furniture designed to bring comfort and elegance to every corner of your home.",
-    badge: "New Collection 2025",
-    gradient: "from-gray-900 to-gray-800",
-    image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&h=600&fit=crop",
-  },
-  {
-    id: 2,
-    title: "Modern & Stylish Designs",
-    description: "Explore contemporary furniture that combines functionality with stunning aesthetics for your modern home.",
-    badge: "Trending Now",
-    gradient: "from-blue-900 to-blue-800",
-    image: "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=1200&h=600&fit=crop",
-  },
-  {
-    id: 3,
-    title: "Comfort Meets Elegance",
-    description: "Find the perfect pieces that match your lifestyle and interior design preferences with our extensive collection.",
-    badge: "Premium Quality",
-    gradient: "from-purple-900 to-purple-800",
-    image: "https://images.unsplash.com/photo-1578500494198-246f612d03b3?w=1200&h=600&fit=crop",
-  },
-];
-
-export default function Home() {
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  // Auto-rotate carousel every 5 seconds
+export default function AdminDashboard() {
+  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalSales: 0,
+    todaySales: 0,
+    pendingBills: 0,
+    lowStock: 0,
+    monthlyRevenue: 0,
+    monthlyExpenses: 0,
+  });
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % carouselItems.length);
-    }, 5000);
-    return () => clearInterval(interval);
+    setMounted(true);
+    fetchDashboardData();
   }, []);
+  
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [statsResult, activitiesResult] = await Promise.all([
+        getDashboardStats(),
+        getRecentActivities(),
+      ]);
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % carouselItems.length);
+      if (statsResult.success && statsResult.data) {
+        setStats(statsResult.data);
+      }
+
+      if (activitiesResult.success && activitiesResult.data) {
+        setRecentActivities(activitiesResult.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const currentDate = mounted 
+    ? new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    : '';
+
+  const quickActions = [
+    {
+      name: "Stock & Inventory",
+      icon: Package,
+      href: "/stock",
+      description: "Manage products and track inventory",
+      color: "bg-blue-500",
+      stats: loading ? "Loading..." : `${stats.lowStock} low stock items`
+    },
+    {
+      name: "Products Catalog",
+      icon: Sofa,
+      href: "/products",
+      description: "View and manage product listings",
+      color: "bg-purple-500",
+      stats: "View all products"
+    },
+    {
+      name: "Billing & Sales",
+      icon: ShoppingCart,
+      href: "/sales",
+      description: "Create invoices and track sales",
+      color: "bg-green-500",
+      stats: loading ? "Loading..." : `${stats.todaySales} sales today`
+    },
+    {
+      name: "Pending Bills",
+      icon: ClipboardList,
+      href: "/pending-bills",
+      description: "Track pending payments",
+      color: "bg-orange-500",
+      stats: loading ? "Loading..." : `${stats.pendingBills} pending`
+    },
+    {
+      name: "Expenditures",
+      icon: Banknote,
+      href: "/expenditures",
+      description: "Track shop expenses",
+      color: "bg-red-500",
+      stats: loading ? "Loading..." : `₹${(stats.monthlyExpenses / 1000).toFixed(0)}K this month`
+    },
+    {
+      name: "Reports",
+      icon: BarChart3,
+      href: "/reports",
+      description: "View financial reports",
+      color: "bg-indigo-500",
+      stats: "View analytics"
+    },
+  ];
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case "sale":
+        return ShoppingCart;
+      case "expense":
+        return Banknote;
+      case "stock":
+        return AlertCircle;
+      default:
+        return Activity;
+    }
   };
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + carouselItems.length) % carouselItems.length);
-  };
-
-  const goToSlide = (index : number) => {
-    setCurrentSlide(index);
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case "sale":
+        return "text-green-500";
+      case "expense":
+        return "text-red-500";
+      case "stock":
+        return "text-orange-500";
+      default:
+        return "text-blue-500";
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation Header */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
+      {/* Admin Header */}
+      <header className="bg-card border-b border-border sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            {/* Logo */}
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-orange-500">
-                <Sofa className="w-6 h-6 text-white" />
+              <div className="p-2 rounded-lg bg-primary shadow-md">
+                <Store className="w-7 h-7 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">MVR Furniture Mart</h1>
-                <p className="text-xs text-gray-500">Premium Furniture Shop</p>
+                <h1 className="text-2xl font-bold text-foreground">MVR Furniture Mart</h1>
+                <p className="text-sm text-muted-foreground">Admin Management Dashboard</p>
               </div>
             </div>
-
-            {/* Navigation Links */}
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#" className="text-gray-700 font-medium hover:text-orange-500 transition">Home</a>
-              <a href="#collections" className="text-gray-700 font-medium hover:text-orange-500 transition">Collections</a>
-              <a href="#products" className="text-gray-700 font-medium hover:text-orange-500 transition">Products</a>
-              <a href="#about" className="text-gray-700 font-medium hover:text-orange-500 transition">About</a>
-              <a href="#contact" className="text-gray-700 font-medium hover:text-orange-500 transition">Contact</a>
-            </div>
-
-            {/* Right Icons */}
+            
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                <Search className="w-5 h-5 text-gray-700" />
-              </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                <Heart className="w-5 h-5 text-gray-700" />
-              </button>
-              <button className="px-4 py-2 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition">
-                Cart
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Carousel Section */}
-      <section className="relative h-[500px] overflow-hidden">
-        {/* Carousel Container */}
-        <div className="relative h-full">
-          {carouselItems.map((item, index) => (
-            <div
-              key={item.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ${
-                index === currentSlide ? "opacity-100" : "opacity-0"
-              }`}
-            >
-              {/* Background Image */}
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{
-                  backgroundImage: `url('${item.image}')`,
-                }}
-              />
-              
-              {/* Overlay Gradient */}
-              <div className={`absolute inset-0 bg-linear-to-r ${item.gradient} opacity-60`} />
-              <div className="absolute inset-0 bg-black/20" />
-
-              {/* Content */}
-              <div className="relative h-full flex items-center">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-                  <div className="max-w-2xl">
-                    {/* Badge */}
-                    <div className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-full mb-6 font-semibold text-sm animate-pulse">
-                      <span className="w-2 h-2 bg-white rounded-full" />
-                      {item.badge}
-                    </div>
-
-                    {/* Main Heading */}
-                    <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight drop-shadow-lg">
-                      {item.title}
-                    </h1>
-
-                    {/* Description */}
-                    <p className="text-lg text-gray-100 mb-8 max-w-xl drop-shadow-md">
-                      {item.description}
-                    </p>
-
-                    {/* CTA Buttons */}
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <button className="px-8 py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition transform hover:scale-105 shadow-lg">
-                        Explore Collection
-                      </button>
-                      <button className="px-8 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition transform hover:scale-105 shadow-lg">
-                        Learn More
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Welcome back, Admin</p>
+                <p className="text-xs text-muted-foreground">
+                  {currentDate || 'Loading...'}
+                </p>
               </div>
             </div>
-          ))}
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Today's Sales */}
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Today&apos;s Sales</CardTitle>
+              <ShoppingCart className="w-5 h-5 text-primary" />
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-3xl font-bold text-foreground">{stats.todaySales}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Sales recorded today</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Monthly Revenue */}
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue</CardTitle>
+              <TrendingUp className="w-5 h-5 text-primary" />
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-3xl font-bold text-foreground">₹{(stats.monthlyRevenue / 1000).toFixed(1)}K</div>
+                  <p className="text-xs text-muted-foreground mt-1">Revenue this month</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pending Bills */}
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Bills</CardTitle>
+              <ClipboardList className="w-5 h-5 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-3xl font-bold text-foreground">{stats.pendingBills}</div>
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-destructive" />
+                    Requires attention
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Low Stock Alert */}
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Low Stock Items</CardTitle>
+              <AlertCircle className="w-5 h-5 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-3xl font-bold text-foreground">{stats.lowStock}</div>
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-destructive" />
+                    Need restock
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Navigation Arrows */}
-        <button
-          onClick={prevSlide}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 text-white p-3 rounded-full transition group"
-        >
-          <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
-        </button>
-        <button
-          onClick={nextSlide}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 text-white p-3 rounded-full transition group"
-        >
-          <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-        </button>
-
-        {/* Dot Indicators */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-3">
-          {carouselItems.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToSlide(index)}
-              className={`h-3 rounded-full transition-all duration-300 ${
-                index === currentSlide
-                  ? "bg-orange-500 w-8"
-                  : "bg-white/50 w-3 hover:bg-white/70"
-              }`}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* Shop by Category Section */}
-      <section id="collections" className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-3">Shop by Category</h2>
-            <p className="text-gray-600 text-lg">Find the perfect furniture for every room</p>
+        {/* Quick Actions Grid */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-foreground">Quick Actions</h2>
+            <Badge variant="outline" className="text-sm">
+              <Activity className="w-3 h-3 mr-1" />
+              Management Tools
+            </Badge>
           </div>
 
-          {/* Category Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature) => {
-              const Icon = feature.icon;
+            {quickActions.map((action) => {
+              const Icon = action.icon;
               return (
-                <Link key={feature.name} href={feature.href}>
-                  <Card className="group h-full border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden">
-                    <CardContent className="p-0">
-                      {/* Icon Background */}
-                      <div className="h-40 bg-linear-to-br from-orange-100 to-orange-50 flex items-center justify-center group-hover:from-orange-200 group-hover:to-orange-100 transition">
-                        <Icon className="w-16 h-16 text-orange-500" />
-                      </div>
-
-                      {/* Card Content */}
-                      <div className="p-6">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-orange-500 transition">
-                          {feature.name}
-                        </h3>
-                        <p className="text-gray-600 text-sm mb-4">
-                          {feature.description}
-                        </p>
-                        <div className="flex items-center text-orange-500 font-semibold text-sm">
-                          Visit <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                <Link key={action.name} href={action.href}>
+                  <Card className="group h-full shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={`p-3 rounded-lg ${action.color} group-hover:scale-110 transition-transform`}>
+                          <Icon className="w-6 h-6 text-white" />
                         </div>
+                        <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
+                      </div>
+                      
+                      <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition">
+                        {action.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {action.description}
+                      </p>
+                      <div className="flex items-center">
+                        <Badge variant="secondary" className="text-xs">
+                          {action.stats}
+                        </Badge>
                       </div>
                     </CardContent>
                   </Card>
@@ -279,92 +305,96 @@ export default function Home() {
             })}
           </div>
         </div>
-      </section>
 
-      {/* Features Section */}
-      <section id="products" className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="text-center">
-              <div className="flex justify-center mb-4">
-                <div className="p-4 bg-orange-100 rounded-full">
-                  <Package className="w-8 h-8 text-orange-500" />
+        {/* Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Activity Feed */}
+          <Card className="lg:col-span-2 shadow-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                 </div>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Wide Selection</h3>
-              <p className="text-gray-600">Explore hundreds of premium furniture pieces for every style and budget</p>
-            </div>
+              ) : recentActivities.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Activity className="w-8 h-8 mx-auto mb-2" />
+                  <p className="text-sm">No recent activities</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentActivities.map((activity, index) => {
+                    const ActivityIcon = getActivityIcon(activity.type);
+                    const activityColor = getActivityColor(activity.type);
+                    return (
+                      <div key={index} className="flex items-start gap-4 p-3 rounded-lg hover:bg-accent transition">
+                        <div className={`p-2 rounded-full bg-muted ${activityColor}`}>
+                          <ActivityIcon className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">{activity.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-            {/* Feature 2 */}
-            <div className="text-center">
-              <div className="flex justify-center mb-4">
-                <div className="p-4 bg-orange-100 rounded-full">
-                  <ShoppingCart className="w-8 h-8 text-orange-500" />
+          {/* Quick Summary */}
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Quick Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                 </div>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Easy Shopping</h3>
-              <p className="text-gray-600">Seamless checkout process with multiple payment options</p>
-            </div>
+              ) : (
+                <>
+                  <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-foreground">Revenue</span>
+                      <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">₹{(stats.monthlyRevenue / 1000).toFixed(1)}K</p>
+                    <p className="text-xs text-muted-foreground mt-1">This month</p>
+                  </div>
 
-            {/* Feature 3 */}
-            <div className="text-center">
-              <div className="flex justify-center mb-4">
-                <div className="p-4 bg-orange-100 rounded-full">
-                  <BarChart3 className="w-8 h-8 text-orange-500" />
-                </div>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Best Prices</h3>
-              <p className="text-gray-600">Competitive pricing with regular discounts and special offers</p>
-            </div>
-          </div>
+                  <div className="p-4 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-foreground">Expenses</span>
+                      <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">₹{(stats.monthlyExpenses / 1000).toFixed(1)}K</p>
+                    <p className="text-xs text-muted-foreground mt-1">This month</p>
+                  </div>
+
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-foreground">Net Profit</span>
+                      <IndianRupee className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">₹{((stats.monthlyRevenue - stats.monthlyExpenses) / 1000).toFixed(1)}K</p>
+                    <p className="text-xs text-muted-foreground mt-1">This month</p>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-300 py-12 border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg bg-orange-500">
-                  <Store className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-bold text-white">MVR Furniture</span>
-              </div>
-              <p className="text-sm">Premium furniture for your home</p>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Shop</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition">All Furniture</a></li>
-                <li><a href="#" className="hover:text-white transition">New Arrivals</a></li>
-                <li><a href="#" className="hover:text-white transition">Sales</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition">About Us</a></li>
-                <li><a href="#" className="hover:text-white transition">Contact</a></li>
-                <li><a href="#" className="hover:text-white transition">Blog</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-white transition">Cookies</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 pt-8 text-center">
-            <p className="text-sm">© 2025 MVR Furniture Mart. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }

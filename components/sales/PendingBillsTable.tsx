@@ -48,7 +48,7 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
     <div className="space-y-3">
       {/* Search Filter */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
           placeholder="Search by customer name..."
@@ -58,9 +58,9 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
         />
       </div>
 
-      <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+      <div className="rounded-lg border bg-card shadow-md overflow-hidden">
         <Table>
-        <TableHeader className="bg-gray-50">
+        <TableHeader className="bg-muted/50">
           <TableRow>
             <TableHead>Customer</TableHead>
             <TableHead>Payment</TableHead>
