@@ -6,12 +6,19 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+interface PaymentHistory {
+  date: string;
+  amount: number;
+  paymentType: string;
+}
+
 interface Sale {
   _id: string;
   customerName: string;
   totalAmount: number;
   initialPayment: number;
   balanceAmount: number;
+  paymentHistory: PaymentHistory[];
 }
 
 interface MakePaymentDialogProps {
@@ -40,6 +47,8 @@ export default function MakePaymentDialog({
   onConfirmPayment,
 }: MakePaymentDialogProps) {
   if (!sale) return null;
+  
+  const totalPaid = sale.paymentHistory?.reduce((sum, p) => sum + p.amount, 0) || 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -60,7 +69,7 @@ export default function MakePaymentDialog({
             <div className="flex justify-between">
               <span className="text-gray-600">Already Paid:</span>
               <span className="font-semibold text-green-600">
-                ₹{sale.initialPayment.toFixed(2)}
+                ₹{totalPaid.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between border-t pt-2">

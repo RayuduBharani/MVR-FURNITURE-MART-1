@@ -3,6 +3,7 @@
 import connectDB from "@/lib/mongodb";
 import Sale from "@/models/Sale";
 import Expenditure from "@/models/Expenditure";
+import Purchase from "@/models/Purchase";
 
 export type ActionResponse<T = unknown> = {
   success: boolean;
@@ -14,9 +15,13 @@ export type DailyReport = {
   date: string;
   totalSales: number;
   totalExpenditures: number;
+  totalPurchases: number;
+  remainingSupplierAmount: number;
+  remainingCustomerAmount: number;
   profit: number;
   salesCount: number;
   expendituresCount: number;
+  purchasesCount: number;
 };
 
 export type MonthlyReport = {
@@ -25,9 +30,13 @@ export type MonthlyReport = {
   monthName: string;
   totalSales: number;
   totalExpenditures: number;
+  totalPurchases: number;
+  remainingSupplierAmount: number;
+  remainingCustomerAmount: number;
   profit: number;
   salesCount: number;
   expendituresCount: number;
+  purchasesCount: number;
   dailyBreakdown: DailyReport[];
 };
 
@@ -35,9 +44,13 @@ export type YearlyReport = {
   year: number;
   totalSales: number;
   totalExpenditures: number;
+  totalPurchases: number;
+  remainingSupplierAmount: number;
+  remainingCustomerAmount: number;
   profit: number;
   salesCount: number;
   expendituresCount: number;
+  purchasesCount: number;
   monthlyBreakdown: MonthlyReport[];
 };
 
@@ -45,15 +58,22 @@ export type FinancialYearReport = {
   financialYear: string;
   totalSales: number;
   totalExpenditures: number;
+  totalPurchases: number;
+  remainingSupplierAmount: number;
+  remainingCustomerAmount: number;
   profit: number;
   salesCount: number;
   expendituresCount: number;
+  purchasesCount: number;
   monthlyBreakdown: {
     month: number;
     year: number;
     monthName: string;
     totalSales: number;
     totalExpenditures: number;
+    totalPurchases: number;
+    remainingSupplierAmount: number;
+    remainingCustomerAmount: number;
     profit: number;
   }[];
 };
@@ -94,8 +114,22 @@ export async function getDailyReport(
       },
     });
 
-    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    // Fetch purchases for the day
+    const purchases = await Purchase.find({
+      date: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
     const totalExpenditures = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalPurchases = purchases.reduce((sum, purchase) => {
+      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+      return sum + paid;
+    }, 0);
+    const remainingSupplierAmount = purchases.reduce((sum, purchase) => {
+      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+      return sum + (purchase.total - paid);
+    }, 0);
+    const remainingCustomerAmount = sales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
     return {
       success: true,
@@ -103,9 +137,13 @@ export async function getDailyReport(
         date: date.toISOString(),
         totalSales,
         totalExpenditures,
-        profit: totalSales - totalExpenditures,
+        totalPurchases,
+        remainingSupplierAmount,
+        remainingCustomerAmount,
+        profit: totalSales - totalExpenditures - totalPurchases,
         salesCount: sales.length,
         expendituresCount: expenditures.length,
+        purchasesCount: purchases.length,
       },
     };
   } catch (error) {
@@ -139,8 +177,22 @@ export async function getMonthlyReport(
       month: month,
     });
 
-    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    // Fetch purchases for the month
+    const purchases = await Purchase.find({
+      date: { $gte: startDate, $lte: endDate },
+    });
+
+    const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
     const totalExpenditures = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalPurchases = purchases.reduce((sum, purchase) => {
+      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+      return sum + paid;
+    }, 0);
+    const remainingSupplierAmount = purchases.reduce((sum, purchase) => {
+      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+      return sum + (purchase.total - paid);
+    }, 0);
+    const remainingCustomerAmount = sales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
     // Daily breakdown
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -157,18 +209,34 @@ export async function getMonthlyReport(
         const expDate = new Date(e.date);
         return expDate.getDate() === day;
       });
+      const dayPurchases = purchases.filter(
+        (p) => p.date >= dayStart && p.date <= dayEnd
+      );
 
-      const daySalesTotal = daySales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+      const daySalesTotal = daySales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
       const dayExpTotal = dayExpenditures.reduce((sum, exp) => sum + exp.amount, 0);
+      const dayPurchasesTotal = dayPurchases.reduce((sum, purchase) => {
+        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+        return sum + paid;
+      }, 0);
+      const dayRemainingSupplier = dayPurchases.reduce((sum, purchase) => {
+        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+        return sum + (purchase.total - paid);
+      }, 0);
+      const dayRemainingCustomer = daySales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
-      if (daySalesTotal > 0 || dayExpTotal > 0) {
+      if (daySalesTotal > 0 || dayExpTotal > 0 || dayPurchasesTotal > 0) {
         dailyBreakdown.push({
           date: dayStart.toISOString(),
           totalSales: daySalesTotal,
           totalExpenditures: dayExpTotal,
-          profit: daySalesTotal - dayExpTotal,
+          totalPurchases: dayPurchasesTotal,
+          remainingSupplierAmount: dayRemainingSupplier,
+          remainingCustomerAmount: dayRemainingCustomer,
+          profit: daySalesTotal - dayExpTotal - dayPurchasesTotal,
           salesCount: daySales.length,
           expendituresCount: dayExpenditures.length,
+          purchasesCount: dayPurchases.length,
         });
       }
     }
@@ -181,9 +249,13 @@ export async function getMonthlyReport(
         monthName: MONTH_NAMES[month - 1],
         totalSales,
         totalExpenditures,
-        profit: totalSales - totalExpenditures,
+        totalPurchases,
+        remainingSupplierAmount,
+        remainingCustomerAmount,
+        profit: totalSales - totalExpenditures - totalPurchases,
         salesCount: sales.length,
         expendituresCount: expenditures.length,
+        purchasesCount: purchases.length,
         dailyBreakdown,
       },
     };
@@ -216,8 +288,22 @@ export async function getYearlyReport(
       year: year,
     });
 
-    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    // Fetch all purchases for the year
+    const purchases = await Purchase.find({
+      date: { $gte: startDate, $lte: endDate },
+    });
+
+    const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
     const totalExpenditures = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalPurchases = purchases.reduce((sum, purchase) => {
+      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+      return sum + paid;
+    }, 0);
+    const remainingSupplierAmount = purchases.reduce((sum, purchase) => {
+      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+      return sum + (purchase.total - paid);
+    }, 0);
+    const remainingCustomerAmount = sales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
     // Monthly breakdown
     const monthlyBreakdown: MonthlyReport[] = [];
@@ -230,20 +316,36 @@ export async function getYearlyReport(
         (s) => s.date >= monthStart && s.date <= monthEnd
       );
       const monthExpenditures = expenditures.filter((e) => e.month === month);
+      const monthPurchases = purchases.filter(
+        (p) => p.date >= monthStart && p.date <= monthEnd
+      );
 
-      const monthSalesTotal = monthSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+      const monthSalesTotal = monthSales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
       const monthExpTotal = monthExpenditures.reduce((sum, exp) => sum + exp.amount, 0);
+      const monthPurchasesTotal = monthPurchases.reduce((sum, purchase) => {
+        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+        return sum + paid;
+      }, 0);
+      const monthRemainingSupplier = monthPurchases.reduce((sum, purchase) => {
+        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+        return sum + (purchase.total - paid);
+      }, 0);
+      const monthRemainingCustomer = monthSales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
-      if (monthSalesTotal > 0 || monthExpTotal > 0) {
+      if (monthSalesTotal > 0 || monthExpTotal > 0 || monthPurchasesTotal > 0) {
         monthlyBreakdown.push({
           month,
           year,
           monthName: MONTH_NAMES[month - 1],
           totalSales: monthSalesTotal,
           totalExpenditures: monthExpTotal,
-          profit: monthSalesTotal - monthExpTotal,
+          totalPurchases: monthPurchasesTotal,
+          remainingSupplierAmount: monthRemainingSupplier,
+          remainingCustomerAmount: monthRemainingCustomer,
+          profit: monthSalesTotal - monthExpTotal - monthPurchasesTotal,
           salesCount: monthSales.length,
           expendituresCount: monthExpenditures.length,
+          purchasesCount: monthPurchases.length,
           dailyBreakdown: [],
         });
       }
@@ -255,9 +357,13 @@ export async function getYearlyReport(
         year,
         totalSales,
         totalExpenditures,
-        profit: totalSales - totalExpenditures,
+        totalPurchases,
+        remainingSupplierAmount,
+        remainingCustomerAmount,
+        profit: totalSales - totalExpenditures - totalPurchases,
         salesCount: sales.length,
         expendituresCount: expenditures.length,
+        purchasesCount: purchases.length,
         monthlyBreakdown,
       },
     };
@@ -297,8 +403,22 @@ export async function getFinancialYearReport(
       ],
     });
 
-    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    // Fetch purchases
+    const purchases = await Purchase.find({
+      date: { $gte: startDate, $lte: endDate },
+    });
+
+    const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
     const totalExpenditures = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalPurchases = purchases.reduce((sum, purchase) => {
+      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+      return sum + paid;
+    }, 0);
+    const remainingSupplierAmount = purchases.reduce((sum, purchase) => {
+      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+      return sum + (purchase.total - paid);
+    }, 0);
+    const remainingCustomerAmount = sales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
     // Monthly breakdown (April to March)
     const monthlyBreakdown = [];
@@ -327,9 +447,21 @@ export async function getFinancialYearReport(
       const monthExpenditures = expenditures.filter(
         (e) => e.year === year && e.month === month
       );
+      const monthPurchases = purchases.filter(
+        (p) => p.date >= monthStart && p.date <= monthEnd
+      );
 
-      const monthSalesTotal = monthSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+      const monthSalesTotal = monthSales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
       const monthExpTotal = monthExpenditures.reduce((sum, exp) => sum + exp.amount, 0);
+      const monthPurchasesTotal = monthPurchases.reduce((sum, purchase) => {
+        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+        return sum + paid;
+      }, 0);
+      const monthRemainingSupplier = monthPurchases.reduce((sum, purchase) => {
+        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
+        return sum + (purchase.total - paid);
+      }, 0);
+      const monthRemainingCustomer = monthSales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
       monthlyBreakdown.push({
         month,
@@ -337,7 +469,10 @@ export async function getFinancialYearReport(
         monthName: name,
         totalSales: monthSalesTotal,
         totalExpenditures: monthExpTotal,
-        profit: monthSalesTotal - monthExpTotal,
+        totalPurchases: monthPurchasesTotal,
+        remainingSupplierAmount: monthRemainingSupplier,
+        remainingCustomerAmount: monthRemainingCustomer,
+        profit: monthSalesTotal - monthExpTotal - monthPurchasesTotal,
       });
     }
 
@@ -347,9 +482,13 @@ export async function getFinancialYearReport(
         financialYear: `${startYear}-${endYear.toString().slice(-2)}`,
         totalSales,
         totalExpenditures,
-        profit: totalSales - totalExpenditures,
+        totalPurchases,
+        remainingSupplierAmount,
+        remainingCustomerAmount,
+        profit: totalSales - totalExpenditures - totalPurchases,
         salesCount: sales.length,
         expendituresCount: expenditures.length,
+        purchasesCount: purchases.length,
         monthlyBreakdown,
       },
     };

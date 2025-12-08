@@ -29,6 +29,7 @@ import {
   TrendingDown,
   DollarSign,
   Loader2,
+  Package,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -245,60 +246,115 @@ export default function ReportsPage() {
               <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
             </div>
           ) : dailyReport ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Total Sales
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(dailyReport.totalSales)}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {dailyReport.salesCount} {dailyReport.salesCount === 1 ? 'transaction' : 'transactions'}
-                  </p>
-                </CardContent>
-              </Card>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Sales
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      {formatCurrency(dailyReport.totalSales)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {dailyReport.salesCount} {dailyReport.salesCount === 1 ? 'transaction' : 'transactions'}
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card className="shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Total Expenditures
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-600">
-                    {formatCurrency(dailyReport.totalExpenditures)}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {dailyReport.expendituresCount} {dailyReport.expendituresCount === 1 ? 'expense' : 'expenses'}
-                  </p>
-                </CardContent>
-              </Card>
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-blue-600" />
+                      Stock Purchases
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {formatCurrency(dailyReport.totalPurchases)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {dailyReport.purchasesCount} {dailyReport.purchasesCount === 1 ? 'purchase' : 'purchases'}
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card className="shadow-sm border-2 border-primary">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    {dailyReport.profit >= 0 ? (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4 text-red-600" />
-                    )}
-                    Net Profit/Loss
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${dailyReport.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(dailyReport.profit)}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {dailyReport.profit >= 0 ? 'Profit' : 'Loss'} for the day
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Expenditures
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-600">
+                      {formatCurrency(dailyReport.totalExpenditures)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {dailyReport.expendituresCount} {dailyReport.expendituresCount === 1 ? 'expense' : 'expenses'}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-2 border-primary">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      {dailyReport.profit >= 0 ? (
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 text-red-600" />
+                      )}
+                      Net Profit/Loss
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${dailyReport.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(dailyReport.profit)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {dailyReport.profit >= 0 ? 'Profit' : 'Loss'} for the day
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-orange-600" />
+                      Remaining Supplier Amount
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {formatCurrency(dailyReport.remainingSupplierAmount)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pending purchase payments
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-purple-600" />
+                      Remaining Customer Amount
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {formatCurrency(dailyReport.remainingCustomerAmount)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pending customer EMI payments
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
           ) : (
             <div className="text-center py-16">
               <DollarSign className="mx-auto h-12 w-12 text-muted-foreground/40" />
@@ -363,7 +419,7 @@ export default function ReportsPage() {
             </div>
           ) : monthlyReport ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -376,6 +432,23 @@ export default function ReportsPage() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {monthlyReport.salesCount} transactions
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-blue-600" />
+                      Stock Purchases
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {formatCurrency(monthlyReport.totalPurchases)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {monthlyReport.purchasesCount} purchases
                     </p>
                   </CardContent>
                 </Card>
@@ -418,6 +491,42 @@ export default function ReportsPage() {
                 </Card>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-orange-600" />
+                      Remaining Supplier Amount
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {formatCurrency(monthlyReport.remainingSupplierAmount)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pending purchase payments
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-purple-600" />
+                      Remaining Customer Amount
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {formatCurrency(monthlyReport.remainingCustomerAmount)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pending customer EMI payments
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
               {monthlyReport.dailyBreakdown.length > 0 && (
                 <Card className="shadow-sm">
                   <CardHeader>
@@ -430,6 +539,7 @@ export default function ReportsPage() {
                           <TableRow className="bg-muted/50 hover:bg-muted/50">
                             <TableHead className="font-medium">Date</TableHead>
                             <TableHead className="text-right font-medium">Sales</TableHead>
+                            <TableHead className="text-right font-medium">Purchases</TableHead>
                             <TableHead className="text-right font-medium">Expenditures</TableHead>
                             <TableHead className="text-right font-medium">Profit/Loss</TableHead>
                           </TableRow>
@@ -442,6 +552,9 @@ export default function ReportsPage() {
                               </TableCell>
                               <TableCell className="text-right text-green-600 font-semibold">
                                 {formatCurrency(day.totalSales)}
+                              </TableCell>
+                              <TableCell className="text-right text-blue-600 font-semibold">
+                                {formatCurrency(day.totalPurchases)}
                               </TableCell>
                               <TableCell className="text-right text-red-600 font-semibold">
                                 {formatCurrency(day.totalExpenditures)}
@@ -505,7 +618,7 @@ export default function ReportsPage() {
             </div>
           ) : yearlyReport ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -518,6 +631,23 @@ export default function ReportsPage() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {yearlyReport.salesCount} transactions
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-blue-600" />
+                      Stock Purchases
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {formatCurrency(yearlyReport.totalPurchases)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {yearlyReport.purchasesCount} purchases
                     </p>
                   </CardContent>
                 </Card>
@@ -560,6 +690,42 @@ export default function ReportsPage() {
                 </Card>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-orange-600" />
+                      Remaining Supplier Amount
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {formatCurrency(yearlyReport.remainingSupplierAmount)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pending purchase payments
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-purple-600" />
+                      Remaining Customer Amount
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {formatCurrency(yearlyReport.remainingCustomerAmount)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pending customer EMI payments
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
               {yearlyReport.monthlyBreakdown.length > 0 && (
                 <Card className="shadow-sm">
                   <CardHeader>
@@ -572,6 +738,7 @@ export default function ReportsPage() {
                           <TableRow className="bg-muted/50 hover:bg-muted/50">
                             <TableHead className="font-medium">Month</TableHead>
                             <TableHead className="text-right font-medium">Sales</TableHead>
+                            <TableHead className="text-right font-medium">Purchases</TableHead>
                             <TableHead className="text-right font-medium">Expenditures</TableHead>
                             <TableHead className="text-right font-medium">Profit/Loss</TableHead>
                           </TableRow>
@@ -584,6 +751,9 @@ export default function ReportsPage() {
                               </TableCell>
                               <TableCell className="text-right text-green-600 font-semibold">
                                 {formatCurrency(month.totalSales)}
+                              </TableCell>
+                              <TableCell className="text-right text-blue-600 font-semibold">
+                                {formatCurrency(month.totalPurchases)}
                               </TableCell>
                               <TableCell className="text-right text-red-600 font-semibold">
                                 {formatCurrency(month.totalExpenditures)}
@@ -644,7 +814,7 @@ export default function ReportsPage() {
             </div>
           ) : fyReport ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -657,6 +827,23 @@ export default function ReportsPage() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {fyReport.salesCount} transactions
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-blue-600" />
+                      Stock Purchases
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {formatCurrency(fyReport.totalPurchases)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {fyReport.purchasesCount} purchases
                     </p>
                   </CardContent>
                 </Card>
@@ -699,6 +886,42 @@ export default function ReportsPage() {
                 </Card>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-orange-600" />
+                      Remaining Supplier Amount
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {formatCurrency(fyReport.remainingSupplierAmount)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pending purchase payments
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-purple-600" />
+                      Remaining Customer Amount
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {formatCurrency(fyReport.remainingCustomerAmount)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pending customer EMI payments
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
               <Card className="shadow-sm">
                 <CardHeader>
                   <CardTitle>Monthly Breakdown (April - March)</CardTitle>
@@ -710,6 +933,7 @@ export default function ReportsPage() {
                         <TableRow className="bg-muted/50 hover:bg-muted/50">
                           <TableHead className="font-medium">Month</TableHead>
                           <TableHead className="text-right font-medium">Sales</TableHead>
+                          <TableHead className="text-right font-medium">Purchases</TableHead>
                           <TableHead className="text-right font-medium">Expenditures</TableHead>
                           <TableHead className="text-right font-medium">Profit/Loss</TableHead>
                         </TableRow>
@@ -722,6 +946,9 @@ export default function ReportsPage() {
                             </TableCell>
                             <TableCell className="text-right text-green-600 font-semibold">
                               {formatCurrency(month.totalSales)}
+                            </TableCell>
+                            <TableCell className="text-right text-blue-600 font-semibold">
+                              {formatCurrency(month.totalPurchases)}
                             </TableCell>
                             <TableCell className="text-right text-red-600 font-semibold">
                               {formatCurrency(month.totalExpenditures)}

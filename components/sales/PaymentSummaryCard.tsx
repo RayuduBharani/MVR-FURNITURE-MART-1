@@ -25,6 +25,8 @@ export default function PaymentSummaryCard({
   paymentHistory,
   onDownloadReceipt,
 }: PaymentSummaryCardProps) {
+  const totalPaid = paymentHistory?.reduce((sum, p) => sum + p.amount, 0) || 0;
+  
   return (
     <Card className="p-6 bg-white shadow-sm">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Summary</h3>
@@ -35,7 +37,7 @@ export default function PaymentSummaryCard({
         </div>
         <div className="bg-green-50 p-4 rounded-lg text-center">
           <p className="text-sm text-green-600">Amount Paid</p>
-          <p className="text-xl font-bold text-green-700">₹{initialPayment.toFixed(2)}</p>
+          <p className="text-xl font-bold text-green-700">₹{totalPaid.toFixed(2)}</p>
         </div>
         <div
           className={`p-4 rounded-lg text-center ${

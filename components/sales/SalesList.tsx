@@ -49,6 +49,7 @@ export default function SalesList({
     <div className="space-y-3">
       {sales.map((sale) => {
         const isPaid = sale.status === 'PAID' && sale.balanceAmount === 0;
+        const totalPaid = sale.paymentHistory?.reduce((sum, p) => sum + p.amount, 0) || 0;
         
         return (
           <Card 
@@ -81,7 +82,7 @@ export default function SalesList({
                     </div>
                     <div>
                       <span className="text-gray-500">Paid: </span>
-                      <span className="font-semibold text-green-600">₹{sale.initialPayment.toFixed(2)}</span>
+                      <span className="font-semibold text-green-600">₹{totalPaid.toFixed(2)}</span>
                     </div>
                     {sale.balanceAmount > 0 && (
                       <div>
@@ -185,7 +186,7 @@ export default function SalesList({
                 </div>
                 <div className="flex justify-between mb-1">
                   <span className="text-gray-600">Paid:</span>
-                  <span className="font-semibold text-green-600">₹{sale.initialPayment.toFixed(2)}</span>
+                  <span className="font-semibold text-green-600">₹{totalPaid.toFixed(2)}</span>
                 </div>
                 {sale.balanceAmount > 0 ? (
                   <div className="flex justify-between pt-1 border-t">

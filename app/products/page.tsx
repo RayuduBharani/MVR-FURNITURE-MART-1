@@ -13,17 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+
 import { Badge } from "@/components/ui/badge";
 import {
   Pagination,
@@ -38,17 +28,16 @@ import {
   ArrowLeft,
   Loader2,
   Pencil,
-  Trash2,
   Search,
   ChevronDown,
   SlidersHorizontal,
-  Plus
+  Plus,
+  AlertTriangle
 } from "lucide-react";
 import { 
   getProducts, 
   createProduct,
   updateProduct,
-  deleteProduct,
   ProductData 
 } from "@/actions/product-actions";
 
@@ -143,16 +132,6 @@ export default function ProductsPage() {
       setError(result.error || "Failed to update product");
     }
     setSubmitting(false);
-  }
-
-  // Handle delete product
-  async function handleDeleteProduct(id: string) {
-    const result = await deleteProduct(id);
-    if (result.success) {
-      loadProducts();
-    } else {
-      setError(result.error || "Failed to delete product");
-    }
   }
 
   // Handle add product
@@ -415,7 +394,7 @@ export default function ProductsPage() {
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Out of Stock</CardTitle>
-              <Trash2 className="w-5 h-5 text-destructive" />
+              <AlertTriangle className="w-5 h-5 text-destructive" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-foreground">{products.filter(p => p.stock === 0).length}</div>
@@ -570,31 +549,6 @@ export default function ProductsPage() {
                         <Pencil className="w-3 h-3 mr-1" />
                         Edit
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground">
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Product</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete &quot;{product.name}&quot;? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteProduct(product._id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                        </AlertDialog>
                       </div>
                     </Card>
               ))}

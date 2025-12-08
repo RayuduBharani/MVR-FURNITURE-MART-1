@@ -2,16 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';    
 import { getSaleById, makeAdditionalPayment } from '@/actions/sales-actions';
 import jsPDF from 'jspdf';
-import SaleDetailsHeader from '@/components/sales/SaleDetailsHeader';
-import SaleCustomerCard from '@/components/sales/SaleCustomerCard';
-import PaymentSummaryCard from '@/components/sales/PaymentSummaryCard';
-import SaleItemsTable from '@/components/sales/SaleItemsTable';
-import SaleActionsCard from '@/components/sales/SaleActionsCard';
 import MakePaymentDialog from '@/components/sales/MakePaymentDialog';
 
 interface CartItem {
@@ -419,44 +415,113 @@ export default function SaleDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <SaleDetailsHeader
-          onBack={() => router.back()}
-          hasBalance={sale.balanceAmount > 0}
-          onAddPayment={() => setPaymentDialogOpen(true)}
-        />
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-3xl mx-auto space-y-4">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between">
+          <Button onClick={() => router.back()} variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          {sale.balanceAmount > 0 && (
+            <Button onClick={() => setPaymentDialogOpen(true)} size="sm">
+              Add Payment
+            </Button>
+          )}
+        </div>
 
-        {/* Customer Info Card */}
-        <SaleCustomerCard
-          customerName={sale.customerName}
-          date={sale.date}
-          status={sale.status}
-          paymentType={sale.paymentType}
-          totalAmount={sale.totalAmount}
-          balanceAmount={sale.balanceAmount}
-          serialNumber={sale.serialNumber}
-        />
+        {/* Main Info Card */}
+        <div className="bg-white rounded-lg border p-4 space-y-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-lg font-semibold">{sale.customerName}</h1>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {new Date(sale.date).toLocaleDateString('en-IN')}
+              </p>
+            </div>
+            <Badge
+              variant={sale.status === 'PAID' ? 'secondary' : 'default'}
+              className={sale.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}
+            >
+              {sale.status}
+            </Badge>
+          </div>
 
-        {/* Payment Summary */}
-        <PaymentSummaryCard
-          totalAmount={sale.totalAmount}
-          initialPayment={sale.initialPayment}
-          balanceAmount={sale.balanceAmount}
-          paymentHistory={sale.paymentHistory}
-          onDownloadReceipt={generatePaymentReceipt}
-        />
+          {/* Amount Summary */}
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t">
+            <div>
+              <p className="text-xs text-gray-500">Total</p>
+              <p className="text-sm font-semibold">₹{sale.totalAmount.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Paid</p>
+              <p className="text-sm font-semibold text-green-600">₹{sale.initialPayment.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Balance</p>
+              <p className={`text-sm font-semibold ${sale.balanceAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                ₹{sale.balanceAmount.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
 
-        {/* Items */}
-        <SaleItemsTable items={sale.items} totalAmount={sale.totalAmount} />
+        {/* Items Table */}
+        <div className="bg-white rounded-lg border overflow-hidden">
+          <div className="p-3 border-b bg-gray-50">
+            <h3 className="text-sm font-semibold">Items</h3>
+          </div>
+          <div className="divide-y">
+            {sale.items.map((item, idx) => (
+              <div key={idx} className="p-3 flex justify-between items-center">
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{item.productName}</p>
+                  <p className="text-xs text-gray-500">Qty: {item.quantity} × ₹{item.price.toFixed(2)}</p>
+                </div>
+                <p className="text-sm font-semibold">₹{item.subtotal.toFixed(2)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Payment History */}
+        {sale.paymentHistory && sale.paymentHistory.length > 0 && (
+          <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="p-3 border-b bg-gray-50">
+              <h3 className="text-sm font-semibold">Payment History</h3>
+            </div>
+            <div className="divide-y">
+              {sale.paymentHistory.map((payment, idx) => (
+                <div key={idx} className="p-3 flex justify-between items-center gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {new Date(payment.date).toLocaleDateString('en-IN')}
+                    </p>
+                    <p className="text-xs text-gray-500">{payment.paymentType}</p>
+                  </div>
+                  <p className="text-sm font-semibold text-green-600">₹{payment.amount.toFixed(2)}</p>
+                  <Button 
+                    onClick={() => generatePaymentReceipt(payment, idx)} 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-7 px-2"
+                  >
+                    <Download className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
-        <SaleActionsCard
-          hasBalance={sale.balanceAmount > 0}
-          onDownloadInvoice={generateAndDownloadInvoice}
-          onMakePayment={() => setPaymentDialogOpen(true)}
-        />
+        {sale.balanceAmount === 0 && (
+          <div className="flex gap-2">
+            <Button onClick={generateAndDownloadInvoice} variant="outline" size="sm" className="flex-1">
+              Download Invoice
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Payment Dialog */}

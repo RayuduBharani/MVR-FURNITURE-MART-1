@@ -83,7 +83,7 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
             </TableRow>
           ) : (
             filteredSales.map((sale) => {
-              const totalPaid = sale.initialPayment + (sale.paymentHistory?.reduce((sum, p) => sum + p.amount, 0) || 0);
+              const totalPaid = sale.paymentHistory?.reduce((sum, p) => sum + p.amount, 0) || 0;
               const actualBalance = sale.totalAmount - totalPaid;
 
             return (

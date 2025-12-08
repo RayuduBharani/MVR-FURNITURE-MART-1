@@ -7,12 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+interface PaymentHistory {
+  date: string;
+  amount: number;
+  paymentType: string;
+}
+
 interface Sale {
   _id: string;
   customerName: string;
   totalAmount: number;
   initialPayment: number;
   balanceAmount: number;
+  paymentHistory: PaymentHistory[];
 }
 
 interface PaymentDialogProps {
@@ -37,6 +44,8 @@ export default function PaymentDialog({
   onConfirmPayment,
 }: PaymentDialogProps) {
   if (!sale) return null;
+  
+  const totalPaid = sale.paymentHistory?.reduce((sum, p) => sum + p.amount, 0) || 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -56,7 +65,7 @@ export default function PaymentDialog({
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Already Paid:</span>
-              <span className="font-medium text-green-600">₹{sale.initialPayment.toFixed(2)}</span>
+              <span className="font-medium text-green-600">₹{totalPaid.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
               <span className="text-gray-700 font-semibold">Balance Due:</span>
