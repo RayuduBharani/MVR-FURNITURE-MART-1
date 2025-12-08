@@ -354,6 +354,43 @@ export default function ReportsPage() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Bills Paid Today */}
+              {dailyReport.paidBillsToday && dailyReport.paidBillsToday.length > 0 && (
+                <Card className="shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base font-medium">Bills Paid Today</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Customer Name</TableHead>
+                          <TableHead>Total Amount</TableHead>
+                          <TableHead>Paid Today</TableHead>
+                          <TableHead>Payment Type</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dailyReport.paidBillsToday.map((bill) => (
+                          <TableRow 
+                            key={bill._id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => router.push(`/sales/${bill._id}`)}
+                          >
+                            <TableCell className="font-medium">{bill.customerName}</TableCell>
+                            <TableCell>{formatCurrency(bill.totalAmount)}</TableCell>
+                            <TableCell className="text-green-600 font-semibold">
+                              {formatCurrency(bill.paidAmount)}
+                            </TableCell>
+                            <TableCell>{bill.paymentType}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
             </>
           ) : (
             <div className="text-center py-16">

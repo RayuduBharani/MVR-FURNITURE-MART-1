@@ -237,59 +237,77 @@ export default function PendingBillsPage() {
           </Card>
         </div>
 
-        {/* Filter Buttons */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Filter by Period</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={filterType === "all" ? "default" : "outline"}
-                onClick={() => setFilterType("all")}
-                className="gap-2"
-              >
-                <Calendar className="w-4 h-4" />
-                All Bills
-              </Button>
-              <Button
-                variant={filterType === "monthly" ? "default" : "outline"}
-                onClick={() => setFilterType("monthly")}
-                className="gap-2"
-              >
-                <Calendar className="w-4 h-4" />
-                Monthly
-              </Button>
-              <Button
-                variant={filterType === "yearly" ? "default" : "outline"}
-                onClick={() => setFilterType("yearly")}
-                className="gap-2"
-              >
-                <TrendingUp className="w-4 h-4" />
-                Yearly
-              </Button>
+        {/* Filters and Search */}
+        <Card className="mb-6 shadow-sm">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filters & Search
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {hasActiveFilters && (
+                  <>
+                    <Badge variant="secondary" className="gap-1">
+                      {[searchTerm && 1, supplierFilter !== "all" && 1, (minAmount || maxAmount) && 1].filter(Boolean).length} active
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearAllFilters}
+                      className="gap-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                      Clear All
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Period Filter */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Filter by Period</label>
+              <div className="flex gap-2 flex-wrap mb-3">
+                <Button
+                  variant={filterType === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterType("all")}
+                >
+                  All Bills
+                </Button>
+                <Button
+                  variant={filterType === "monthly" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterType("monthly")}
+                >
+                  Monthly
+                </Button>
+                <Button
+                  variant={filterType === "yearly" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterType("yearly")}
+                >
+                  Yearly
+                </Button>
+              </div>
 
-            {/* Time Selection */}
-            {filterType === "monthly" && (
-              <div>
-                <label className="text-sm font-medium">Select Month</label>
+              {/* Time Selection */}
+              {filterType === "monthly" && (
                 <input
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground w-full"
+                  className="px-3 py-2 border border-input rounded-md bg-background text-foreground w-full max-w-xs"
                 />
-              </div>
-            )}
+              )}
 
-            {filterType === "yearly" && (
-              <div>
-                <label className="text-sm font-medium">Select Financial Year</label>
+              {filterType === "yearly" && (
                 <select
                   value={selectedFY}
                   onChange={(e) => setSelectedFY(parseInt(e.target.value))}
-                  className="mt-1 px-3 py-2 border border-input rounded-md bg-background text-foreground w-full"
+                  className="px-3 py-2 border border-input rounded-md bg-background text-foreground w-full max-w-xs"
                 >
                   {[...Array(10)].map((_, i) => {
                     const fy = currentFY - i;
@@ -300,56 +318,26 @@ export default function PendingBillsPage() {
                     );
                   })}
                 </select>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Search and Filters */}
-        <Card className="mb-6 shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Filter className="h-5 w-5" />
-                  Search & Filters
-                </CardTitle>
-                {hasActiveFilters && (
-                  <Badge variant="secondary" className="gap-1">
-                    {[searchTerm && 1, supplierFilter !== "all" && 1, (minAmount || maxAmount) && 1].filter(Boolean).length} active
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearAllFilters}
-                    className="gap-1 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                    Clear All
-                  </Button>
-                )}
-                <Button
-                  variant={showFilters ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="gap-2"
-                >
-                  <Filter className="h-4 w-4" />
-                  {showFilters ? "Hide" : "Show"}
-                </Button>
-              </div>
+              )}
             </div>
-          </CardHeader>
-          <div
-            className={`transition-all duration-300 ease-in-out overflow-hidden ${
-              showFilters ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
-            }`}
-          >
-            <CardContent className="space-y-4 border-t pt-6">
+
+            <div className="border-t pt-4">
+              <Button
+                variant={showFilters ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="gap-2 mb-4"
+              >
+                <Search className="h-4 w-4" />
+                {showFilters ? "Hide Search & Filters" : "Show Search & Filters"}
+              </Button>
+
+              <div
+                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                  showFilters ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <div className="space-y-4">
             {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -440,13 +428,15 @@ export default function PendingBillsPage() {
               </div>
             </div>
 
-              {/* Results Count */}
-              <div className="text-sm text-muted-foreground">
-                Showing {filteredPurchases.length} of {purchases.length} bills
-                {hasActiveFilters && " (filtered)"}
+                  {/* Results Count */}
+                  <div className="text-sm text-muted-foreground pt-2 border-t">
+                    Showing {filteredPurchases.length} of {purchases.length} bills
+                    {hasActiveFilters && " (filtered)"}
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </div>
+            </div>
+          </CardContent>
         </Card>
 
         {/* Supplier Grouping */}

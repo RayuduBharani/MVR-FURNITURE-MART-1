@@ -291,23 +291,29 @@ export default function ProductsPage() {
                         <Label htmlFor="add-purchasePrice">Purchase Price</Label>
                         <Input
                           id="add-purchasePrice"
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="text"
                           value={addForm.purchasePrice}
-                          onChange={(e) => setAddForm({ ...addForm, purchasePrice: e.target.value })}
-                          placeholder="0.00"
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                              setAddForm({ ...addForm, purchasePrice: value });
+                            }
+                          }}
+                          placeholder="0"
                         />
                       </div>
                       <div>
                         <Label htmlFor="add-sellingPrice">Selling Price</Label>
                         <Input
                           id="add-sellingPrice"
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="text"
                           value={addForm.sellingPrice}
-                          onChange={(e) => setAddForm({ ...addForm, sellingPrice: e.target.value })}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                              setAddForm({ ...addForm, sellingPrice: value });
+                            }
+                          }}
                           placeholder="0.00"
                         />
                       </div>

@@ -452,13 +452,6 @@ export default function ProductDetailPage({
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Stock In
               </Button>
-              <Button
-                variant="destructive"
-                onClick={() => setIsDeleteOpen(true)}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </Button>
             </div>
           </div>
         </div>
@@ -757,13 +750,14 @@ export default function ProductDetailPage({
                 <Label htmlFor="purchasePrice">Purchase Price</Label>
                 <Input
                   id="purchasePrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
                   value={editForm.purchasePrice}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, purchasePrice: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setEditForm({ ...editForm, purchasePrice: value });
+                    }
+                  }}
                   placeholder="0.00"
                 />
               </div>
@@ -771,13 +765,14 @@ export default function ProductDetailPage({
                 <Label htmlFor="sellingPrice">Selling Price</Label>
                 <Input
                   id="sellingPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
                   value={editForm.sellingPrice}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, sellingPrice: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setEditForm({ ...editForm, sellingPrice: value });
+                    }
+                  }}
                   placeholder="0.00"
                 />
               </div>
@@ -786,12 +781,14 @@ export default function ProductDetailPage({
               <Label htmlFor="stock">Stock</Label>
               <Input
                 id="stock"
-                type="number"
-                min="0"
+                type="text"
                 value={editForm.stock}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, stock: e.target.value })
-                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || /^\d+$/.test(value)) {
+                    setEditForm({ ...editForm, stock: value });
+                  }
+                }}
                 placeholder="0"
               />
             </div>
@@ -831,12 +828,14 @@ export default function ProductDetailPage({
                 <Label htmlFor="quantity">Quantity *</Label>
                 <Input
                   id="quantity"
-                  type="number"
-                  min="1"
+                  type="text"
                   value={stockInForm.quantity}
-                  onChange={(e) =>
-                    setStockInForm({ ...stockInForm, quantity: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setStockInForm({ ...stockInForm, quantity: value });
+                    }
+                  }}
                   placeholder="0"
                   required
                 />
@@ -845,16 +844,17 @@ export default function ProductDetailPage({
                 <Label htmlFor="pricePerUnit">Price Per Unit *</Label>
                 <Input
                   id="pricePerUnit"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
                   value={stockInForm.pricePerUnit}
-                  onChange={(e) =>
-                    setStockInForm({
-                      ...stockInForm,
-                      pricePerUnit: e.target.value,
-                    })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setStockInForm({
+                        ...stockInForm,
+                        pricePerUnit: value,
+                      });
+                    }
+                  }}
                   placeholder="0.00"
                   required
                 />
@@ -895,16 +895,17 @@ export default function ProductDetailPage({
                 <Label htmlFor="initialPayment">Initial Payment</Label>
                 <Input
                   id="initialPayment"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
                   value={stockInForm.initialPayment}
-                  onChange={(e) =>
-                    setStockInForm({
-                      ...stockInForm,
-                      initialPayment: e.target.value,
-                    })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setStockInForm({
+                        ...stockInForm,
+                        initialPayment: value,
+                      });
+                    }
+                  }}
                   placeholder="0.00"
                 />
               </div>
@@ -1008,19 +1009,16 @@ export default function ProductDetailPage({
                   <Label htmlFor="amount">Payment Amount *</Label>
                   <Input
                     id="amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
                     value={paymentForm.amount}
-                    onChange={(e) =>
-                      setPaymentForm({ ...paymentForm, amount: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setPaymentForm({ ...paymentForm, amount: value });
+                      }
+                    }}
                     placeholder="0.00"
                     required
-                    max={
-                      purchases.find((p) => p._id === selectedPurchaseId)
-                        ?.pendingAmount || 0
-                    }
                   />
                 </div>
                 <div>

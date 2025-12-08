@@ -22,6 +22,14 @@ export type DailyReport = {
   salesCount: number;
   expendituresCount: number;
   purchasesCount: number;
+  paidBillsToday: Array<{
+    _id: string;
+    customerName: string;
+    totalAmount: number;
+    paidAmount: number;
+    paymentType: string;
+    date: string;
+  }>;
 };
 
 export type MonthlyReport = {
@@ -101,6 +109,30 @@ export async function getDailyReport(
       date: { $gte: startOfDay, $lte: endOfDay },
     });
 
+    // Fetch sales with payments made today
+    const paidBillsToday = await Sale.find({
+      'paymentHistory.date': { $gte: startOfDay, $lte: endOfDay },
+    }).lean();
+
+    // Filter and map paid bills with payments made today
+    const paidBillsList = paidBillsToday.map(sale => {
+      const paymentsToday = sale.paymentHistory?.filter((payment: { date: Date | string; amount: number; paymentType: string }) => {
+        const paymentDate = new Date(payment.date);
+        return paymentDate >= startOfDay && paymentDate <= endOfDay;
+      }) || [];
+      
+      const paidAmountToday = paymentsToday.reduce((sum: number, p: { date: Date | string; amount: number; paymentType: string }) => sum + p.amount, 0);
+      
+      return {
+        _id: sale._id.toString(),
+        customerName: sale.customerName,
+        totalAmount: sale.totalAmount,
+        paidAmount: paidAmountToday,
+        paymentType: paymentsToday[0]?.paymentType || sale.paymentType,
+        date: sale.date.toISOString(),
+      };
+    });
+
     // Fetch expenditures for the day
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
@@ -144,6 +176,7 @@ export async function getDailyReport(
         salesCount: sales.length,
         expendituresCount: expenditures.length,
         purchasesCount: purchases.length,
+        paidBillsToday: paidBillsList,
       },
     };
   } catch (error) {
@@ -237,6 +270,7 @@ export async function getMonthlyReport(
           salesCount: daySales.length,
           expendituresCount: dayExpenditures.length,
           purchasesCount: dayPurchases.length,
+          paidBillsToday: [],
         });
       }
     }

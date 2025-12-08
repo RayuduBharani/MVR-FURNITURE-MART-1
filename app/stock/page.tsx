@@ -221,11 +221,14 @@ export default function StockPage() {
                         <Label htmlFor="purchasePrice">Purchase Price</Label>
                         <Input
                           id="purchasePrice"
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="text"
                           value={productForm.purchasePrice}
-                          onChange={(e) => setProductForm({ ...productForm, purchasePrice: e.target.value })}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                              setProductForm({ ...productForm, purchasePrice: value });
+                            }
+                          }}
                           placeholder="0.00"
                         />
                       </div>
@@ -233,11 +236,14 @@ export default function StockPage() {
                         <Label htmlFor="sellingPrice">Selling Price</Label>
                         <Input
                           id="sellingPrice"
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="text"
                           value={productForm.sellingPrice}
-                          onChange={(e) => setProductForm({ ...productForm, sellingPrice: e.target.value })}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                              setProductForm({ ...productForm, sellingPrice: value });
+                            }
+                          }}
                           placeholder="0.00"
                         />
                       </div>
