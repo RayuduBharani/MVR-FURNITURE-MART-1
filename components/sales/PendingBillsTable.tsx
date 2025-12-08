@@ -22,6 +22,7 @@ interface Sale {
   totalAmount: number;
   initialPayment: number;
   balanceAmount: number;
+  serialNumber?: string;
   paymentHistory: PaymentHistory[];
   items: Array<{
     productId: string;
@@ -41,7 +42,8 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredSales = sales.filter((sale) =>
-    sale.customerName.toLowerCase().includes(searchQuery.toLowerCase())
+    sale.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (sale.serialNumber && sale.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -51,7 +53,7 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Search by customer name..."
+          placeholder="Search by customer name or serial number..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -63,6 +65,7 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
         <TableHeader className="bg-muted/50">
           <TableRow>
             <TableHead>Customer</TableHead>
+            <TableHead>Serial Number</TableHead>
             <TableHead>Payment</TableHead>
             <TableHead>Date</TableHead>
             <TableHead className="text-right">Total</TableHead>
@@ -74,7 +77,7 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
         <TableBody>
           {filteredSales.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+              <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                 {searchQuery ? 'No customers found matching your search' : 'No pending bills'}
               </TableCell>
             </TableRow>
@@ -86,6 +89,9 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
             return (
               <TableRow key={sale._id} className="hover:bg-gray-50">
                 <TableCell className="font-medium">{sale.customerName}</TableCell>
+                <TableCell className="text-sm">
+                  {sale.serialNumber || '-'}
+                </TableCell>
                 <TableCell>
                   <Badge variant="outline">{sale.paymentType}</Badge>
                 </TableCell>

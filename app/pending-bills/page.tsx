@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -19,7 +20,20 @@ import {
   Calendar,
   TrendingUp,
   DollarSign,
+  Eye,
+  Search,
+  X,
+  Filter,
+  ArrowUpDown,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   getPendingPurchasesWithFilters,
   getPendingBillsStats,
@@ -40,6 +54,15 @@ export default function PendingBillsPage() {
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [groupBySupplier, setGroupBySupplier] = useState(false);
+  
+  // Additional filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("all");
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "amount" | "supplier">("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -84,6 +107,66 @@ export default function PendingBillsPage() {
     setSelectedPurchaseId(purchaseId);
     setShowPaymentDialog(true);
   };
+
+  // Get unique suppliers
+  const uniqueSuppliers = Array.from(
+    new Set(purchases.map((p) => p.supplierName).filter(Boolean))
+  ).sort();
+
+  // Filter and sort purchases
+  const filteredPurchases = purchases
+    .filter((purchase) => {
+      // Search filter
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const matchesProduct = purchase.productName.toLowerCase().includes(search);
+        const matchesSupplier = purchase.supplierName?.toLowerCase().includes(search);
+        if (!matchesProduct && !matchesSupplier) return false;
+      }
+
+      // Supplier filter
+      if (supplierFilter !== "all" && purchase.supplierName !== supplierFilter) {
+        return false;
+      }
+
+      // Amount range filter
+      if (minAmount && purchase.pendingAmount < parseFloat(minAmount)) {
+        return false;
+      }
+      if (maxAmount && purchase.pendingAmount > parseFloat(maxAmount)) {
+        return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case "date":
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case "amount":
+          comparison = a.pendingAmount - b.pendingAmount;
+          break;
+        case "supplier":
+          comparison = (a.supplierName || "").localeCompare(b.supplierName || "");
+          break;
+      }
+      
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setSupplierFilter("all");
+    setMinAmount("");
+    setMaxAmount("");
+    setSortBy("date");
+    setSortOrder("desc");
+  };
+
+  const hasActiveFilters = searchTerm || supplierFilter !== "all" || minAmount || maxAmount;
 
   if (loading) {
     return (
@@ -222,6 +305,150 @@ export default function PendingBillsPage() {
           </CardContent>
         </Card>
 
+        {/* Search and Filters */}
+        <Card className="mb-6 shadow-sm">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Filter className="h-5 w-5" />
+                  Search & Filters
+                </CardTitle>
+                {hasActiveFilters && (
+                  <Badge variant="secondary" className="gap-1">
+                    {[searchTerm && 1, supplierFilter !== "all" && 1, (minAmount || maxAmount) && 1].filter(Boolean).length} active
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="gap-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear All
+                  </Button>
+                )}
+                <Button
+                  variant={showFilters ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  {showFilters ? "Hide" : "Show"}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <div
+            className={`transition-all duration-300 ease-in-out overflow-hidden ${
+              showFilters ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+            }`}
+          >
+            <CardContent className="space-y-4 border-t pt-6">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by product or supplier name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Supplier Filter */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Supplier</label>
+                <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All suppliers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Suppliers</SelectItem>
+                    {uniqueSuppliers.map((supplier) => (
+                      <SelectItem key={supplier} value={supplier}>
+                        {supplier}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Min Amount */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Min Amount</label>
+                <Input
+                  type="number"
+                  placeholder="₹0"
+                  value={minAmount}
+                  onChange={(e) => setMinAmount(e.target.value)}
+                  min="0"
+                />
+              </div>
+
+              {/* Max Amount */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Max Amount</label>
+                <Input
+                  type="number"
+                  placeholder="₹999999"
+                  value={maxAmount}
+                  onChange={(e) => setMaxAmount(e.target.value)}
+                  min="0"
+                />
+              </div>
+
+              {/* Sort By */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Sort By</label>
+                <div className="flex gap-2">
+                  <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="date">Date</SelectItem>
+                      <SelectItem value="amount">Amount</SelectItem>
+                      <SelectItem value="supplier">Supplier</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                    title={sortOrder === "asc" ? "Ascending" : "Descending"}
+                  >
+                    <ArrowUpDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+              {/* Results Count */}
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredPurchases.length} of {purchases.length} bills
+                {hasActiveFilters && " (filtered)"}
+              </div>
+            </CardContent>
+          </div>
+        </Card>
+
         {/* Supplier Grouping */}
         {stats && stats.bySupplier.length > 0 && (
           <Card className="mb-6 shadow-sm">
@@ -272,15 +499,30 @@ export default function PendingBillsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {purchases.length === 0 ? (
+            {filteredPurchases.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <DollarSign className="mx-auto h-12 w-12 text-muted-foreground/40 mb-4" />
-                <p className="text-base font-medium">No pending bills found</p>
+                <p className="text-base font-medium">
+                  {hasActiveFilters ? "No bills match your filters" : "No pending bills found"}
+                </p>
                 <p className="text-sm mt-1">
-                  {filterType !== "all" 
+                  {hasActiveFilters 
+                    ? "Try adjusting your search criteria or clear filters."
+                    : filterType !== "all" 
                     ? "Try selecting a different time period."
                     : "All supplier payments are up to date."}
                 </p>
+                {hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="mt-4 gap-2"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear All Filters
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -298,7 +540,7 @@ export default function PendingBillsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchases.map((purchase) => (
+                    {filteredPurchases.map((purchase) => (
                       <TableRow key={purchase._id}>
                         <TableCell className="font-medium">
                           {new Date(purchase.date).toLocaleDateString("en-IN", {
@@ -321,6 +563,16 @@ export default function PendingBillsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-2">
+                            <Link href={`/stock/product/${purchase.productId}`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                View
+                              </Button>
+                            </Link>
                             <Button
                               variant="outline"
                               size="sm"

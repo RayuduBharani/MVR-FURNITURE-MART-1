@@ -23,6 +23,7 @@ export interface CreateSaleRequest {
   paymentType: "CASH" | "UPI" | "CARD" | "OTHER";
   pendingBill: boolean;
   initialPayment?: number;
+  serialNumber?: string;
   items: Array<{
     productId: string;
     quantity: number;
@@ -44,6 +45,7 @@ export interface SaleData {
   totalAmount: number;
   initialPayment: number;
   balanceAmount: number;
+  serialNumber?: string;
   paymentHistory: PaymentHistoryData[];
   items: ISaleItem[];
 }
@@ -142,6 +144,8 @@ export async function createSale(request: CreateSaleRequest): Promise<ActionResp
   try {
     await connectDB();
 
+    console.log("CreateSale request received:", JSON.stringify(request, null, 2));
+
     // Validation
     if (!request.items || request.items.length === 0) {
       return {
@@ -218,7 +222,7 @@ export async function createSale(request: CreateSaleRequest): Promise<ActionResp
     }] : [];
 
     // Create sale record
-    const sale = new Sale({
+    const saleData: any = {
       date: new Date(),
       customerName: request.customerName || "Walk-in",
       paymentType: request.paymentType,
@@ -228,7 +232,18 @@ export async function createSale(request: CreateSaleRequest): Promise<ActionResp
       balanceAmount,
       paymentHistory,
       items: saleItems,
-    });
+    };
+
+    // Only add serialNumber if it exists and is not empty
+    if (request.serialNumber && request.serialNumber.trim() !== "") {
+      saleData.serialNumber = request.serialNumber.trim();
+      console.log("Serial number being saved:", saleData.serialNumber);
+    } else {
+      console.log("No serial number provided. request.serialNumber:", request.serialNumber);
+    }
+
+    const sale = new Sale(saleData);
+    console.log("Sale document before save:", JSON.stringify(sale.toObject(), null, 2));
 
     await sale.save();
 
@@ -254,6 +269,7 @@ export async function createSale(request: CreateSaleRequest): Promise<ActionResp
         totalAmount: sale.totalAmount,
         initialPayment: sale.initialPayment,
         balanceAmount: sale.balanceAmount,
+        serialNumber: sale.serialNumber,
         paymentHistory: (sale.paymentHistory || []).map((payment: any) => ({
           date: new Date(payment.date).toISOString(),
           amount: payment.amount,
@@ -316,6 +332,7 @@ export async function getSales(
       totalAmount: sale.totalAmount,
       initialPayment: sale.initialPayment || 0,
       balanceAmount: sale.balanceAmount || 0,
+      serialNumber: sale.serialNumber,
       paymentHistory: (sale.paymentHistory || []).map((payment: any) => ({
         date: new Date(payment.date).toISOString(),
         amount: payment.amount,
@@ -367,6 +384,7 @@ export async function getSaleById(id: string): Promise<ActionResponse<SaleData>>
         totalAmount: sale.totalAmount,
         initialPayment: sale.initialPayment || 0,
         balanceAmount: sale.balanceAmount || 0,
+        serialNumber: sale.serialNumber,
         paymentHistory: (sale.paymentHistory || []).map((payment: any) => ({
           date: new Date(payment.date).toISOString(),
           amount: payment.amount,

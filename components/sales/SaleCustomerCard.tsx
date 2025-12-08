@@ -10,6 +10,7 @@ interface SaleCustomerCardProps {
   paymentType: string;
   totalAmount: number;
   balanceAmount: number;
+  serialNumber?: string;
 }
 
 export default function SaleCustomerCard({
@@ -19,6 +20,7 @@ export default function SaleCustomerCard({
   paymentType,
   totalAmount,
   balanceAmount,
+  serialNumber,
 }: SaleCustomerCardProps) {
   return (
     <Card className="p-6 bg-white shadow-sm">
@@ -33,6 +35,11 @@ export default function SaleCustomerCard({
               day: 'numeric',
             })}
           </p>
+          {serialNumber && (
+            <p className="text-sm text-gray-600 mt-1">
+              Serial Number: <span className="font-semibold">{serialNumber}</span>
+            </p>
+          )}
           <div className="flex gap-2 mt-3">
             <Badge
               variant={status === 'PAID' ? 'secondary' : 'default'}

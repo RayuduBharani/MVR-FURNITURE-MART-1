@@ -37,6 +37,7 @@ interface Sale {
   totalAmount: number;
   initialPayment: number;
   balanceAmount: number;
+  serialNumber?: string;
   paymentHistory: PaymentHistory[];
   items: CartItem[];
 }
@@ -435,6 +436,7 @@ export default function SaleDetailsPage() {
           paymentType={sale.paymentType}
           totalAmount={sale.totalAmount}
           balanceAmount={sale.balanceAmount}
+          serialNumber={sale.serialNumber}
         />
 
         {/* Payment Summary */}

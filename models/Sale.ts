@@ -23,6 +23,7 @@ export interface ISale extends Document {
   totalAmount: number;
   initialPayment: number;
   balanceAmount: number;
+  serialNumber?: string;
   paymentHistory: IPaymentHistory[];
   items: ISaleItem[];
   createdAt: Date;
@@ -66,6 +67,10 @@ const SaleSchema = new Schema<ISale>(
       type: Number,
       default: 0,
       min: 0,
+    },
+    serialNumber: {
+      type: String,
+      default: "",
     },
     paymentHistory: [
       {
@@ -124,5 +129,11 @@ const SaleSchema = new Schema<ISale>(
 SaleSchema.index({ date: -1 });
 SaleSchema.index({ status: 1 });
 SaleSchema.index({ customerName: 1 });
+SaleSchema.index({ serialNumber: 1 });
 
-export default mongoose.models.Sale || mongoose.model<ISale>("Sale", SaleSchema);
+// Delete the cached model if it exists to ensure schema updates are applied
+if (mongoose.models.Sale) {
+  delete mongoose.models.Sale;
+}
+
+export default mongoose.model<ISale>("Sale", SaleSchema);

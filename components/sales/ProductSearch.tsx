@@ -18,10 +18,12 @@ interface ProductSearchProps {
   searchResults: Product[];
   selectedProduct: Product | null;
   quantity: number;
+  sellingPrice: number;
   onSearchChange: (query: string) => void;
   onSelectProduct: (product: Product) => void;
   onClearProduct: () => void;
   onQuantityChange: (quantity: number) => void;
+  onSellingPriceChange: (price: number) => void;
   onAddToCart: () => void;
 }
 
@@ -30,10 +32,12 @@ export default function ProductSearch({
   searchResults,
   selectedProduct,
   quantity,
+  sellingPrice,
   onSearchChange,
   onSelectProduct,
   onClearProduct,
   onQuantityChange,
+  onSellingPriceChange,
   onAddToCart,
 }: ProductSearchProps) {
   return (
@@ -133,11 +137,30 @@ export default function ProductSearch({
               <div className="flex-1">
                 <Label className="text-sm font-semibold text-foreground mb-2 block">Quantity</Label>
                 <Input
-                  type="number"
-                  min="1"
-                  max={selectedProduct.stock}
+                  type="text"
                   value={quantity}
-                  onChange={(e) => onQuantityChange(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d+$/.test(value)) {
+                      onQuantityChange(parseInt(value) || 0);
+                    }
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  className="h-11 text-base"
+                />
+              </div>
+              <div className="flex-1">
+                <Label className="text-sm font-semibold text-foreground mb-2 block">Selling Price</Label>
+                <Input
+                  type="text"
+                  value={sellingPrice}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      onSellingPriceChange(parseFloat(value) || 0);
+                    }
+                  }}
+                  onFocus={(e) => e.target.select()}
                   className="h-11 text-base"
                 />
               </div>
@@ -145,7 +168,7 @@ export default function ProductSearch({
                 <Label className="text-sm font-semibold text-foreground mb-2 block">Subtotal</Label>
                 <div className="h-11 px-4 bg-card border-2 border-border rounded-md flex items-center">
                   <span className="text-lg font-bold text-foreground">
-                    ₹{(selectedProduct.sellingPrice * quantity).toFixed(2)}
+                    ₹{(sellingPrice * quantity).toFixed(2)}
                   </span>
                 </div>
               </div>

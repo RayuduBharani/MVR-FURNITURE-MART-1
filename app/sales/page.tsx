@@ -53,6 +53,7 @@ interface Sale {
   totalAmount: number;
   initialPayment: number;
   balanceAmount: number;
+  serialNumber?: string;
   paymentHistory: PaymentHistory[];
   items: CartItem[];
 }
@@ -62,14 +63,20 @@ export default function SalesPage() {
   
   // Create Bill State
   const [customerName, setCustomerName] = useState('');
+  const [phoneNumber1, setPhoneNumber1] = useState('');
+  const [phoneNumber2, setPhoneNumber2] = useState('');
+  const [address, setAddress] = useState('');
+  const [notes, setNotes] = useState('');
   const [paymentType, setPaymentType] = useState<'CASH' | 'UPI' | 'CARD' | 'OTHER'>('CASH');
   const [isPendingBill, setIsPendingBill] = useState(false);
   const [initialPayment, setInitialPayment] = useState('');
+  const [serialNumber, setSerialNumber] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [sellingPrice, setSellingPrice] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -135,12 +142,17 @@ export default function SalesPage() {
       return;
     }
 
-    const subtotal = quantity * selectedProduct.sellingPrice;
+    if (sellingPrice <= 0) {
+      toast.error('Selling price must be greater than 0');
+      return;
+    }
+
+    const subtotal = quantity * sellingPrice;
     const newItem: CartItem = {
       productId: selectedProduct._id,
       productName: selectedProduct.name,
       quantity,
-      price: selectedProduct.sellingPrice,
+      price: sellingPrice,
       subtotal,
     };
 
@@ -157,10 +169,11 @@ export default function SalesPage() {
 
     setSelectedProduct(null);
     setQuantity(1);
+    setSellingPrice(0);
     setSearchQuery('');
     setSearchResults([]);
     setError('');
-  }, [selectedProduct, quantity, cart]);
+  }, [selectedProduct, quantity, sellingPrice, cart]);
 
   // Remove item from cart
   const handleRemoveFromCart = useCallback((productId: string) => {
@@ -192,6 +205,10 @@ export default function SalesPage() {
 
     // Validate initial payment if it's a pending bill
     if (isPendingBill) {
+      if (!serialNumber || serialNumber.trim() === '') {
+        toast.error('Serial number is required for pending bills');
+        return;
+      }
       const initialPaymentValue = parseFloat(initialPayment) || 0;
       if (initialPaymentValue < 0) {
         toast.error('Initial payment cannot be negative');
@@ -215,16 +232,22 @@ export default function SalesPage() {
         ? Math.min(parseFloat(initialPayment) || 0, totalAmount)
         : totalAmount;
 
-      const result = await createSale({
+      const saleRequest = {
         customerName: finalCustomerName,
         paymentType,
         pendingBill: isPendingBill,
         initialPayment: paymentAmount,
+        serialNumber: isPendingBill ? serialNumber : undefined,
         items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
         })),
-      });
+      };
+
+      console.log('Creating sale with request:', saleRequest);
+      console.log('Serial number value:', serialNumber, 'isPendingBill:', isPendingBill);
+
+      const result = await createSale(saleRequest);
 
       console.log('Create sale result:', result);
 
@@ -237,9 +260,14 @@ export default function SalesPage() {
         
         // Clear form first
         setCustomerName('');
+        setPhoneNumber1('');
+        setPhoneNumber2('');
+        setAddress('');
+        setNotes('');
         setPaymentType('CASH');
         setIsPendingBill(false);
         setInitialPayment('');
+        setSerialNumber('');
         setCart([]);
         setQuantity(1);
 
@@ -568,33 +596,49 @@ export default function SalesPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left - Product Selection */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Customer Info */}
-                <CustomerInfoForm
-                  customerName={customerName}
-                  setCustomerName={setCustomerName}
-                  paymentType={paymentType}
-                  setPaymentType={setPaymentType}
-                  initialPayment={initialPayment}
-                  setInitialPayment={setInitialPayment}
-                  isPendingBill={isPendingBill}
-                  setIsPendingBill={setIsPendingBill}
-                />
-
+                
                 {/* Product Search */}
                 <ProductSearch
                   searchQuery={searchQuery}
                   searchResults={searchResults}
                   selectedProduct={selectedProduct}
                   quantity={quantity}
+                  sellingPrice={sellingPrice}
                   onSearchChange={handleSearch}
                   onSelectProduct={(product) => {
                     setSelectedProduct(product);
+                    setSellingPrice(product.sellingPrice);
                     setSearchQuery('');
                     setSearchResults([]);
                   }}
-                  onClearProduct={() => setSelectedProduct(null)}
+                  onClearProduct={() => {
+                    setSelectedProduct(null);
+                    setSellingPrice(0);
+                  }}
                   onQuantityChange={setQuantity}
+                  onSellingPriceChange={setSellingPrice}
                   onAddToCart={handleAddToCart}
+                />
+                {/* Customer Info */}
+                <CustomerInfoForm
+                  customerName={customerName}
+                  setCustomerName={setCustomerName}
+                  phoneNumber1={phoneNumber1}
+                  setPhoneNumber1={setPhoneNumber1}
+                  phoneNumber2={phoneNumber2}
+                  setPhoneNumber2={setPhoneNumber2}
+                  address={address}
+                  setAddress={setAddress}
+                  notes={notes}
+                  setNotes={setNotes}
+                  paymentType={paymentType}
+                  setPaymentType={setPaymentType}
+                  initialPayment={initialPayment}
+                  setInitialPayment={setInitialPayment}
+                  isPendingBill={isPendingBill}
+                  setIsPendingBill={setIsPendingBill}
+                  serialNumber={serialNumber}
+                  setSerialNumber={setSerialNumber}
                 />
               </div>
 

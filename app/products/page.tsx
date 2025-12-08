@@ -24,14 +24,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
   Pagination,
@@ -70,8 +62,7 @@ export default function ProductsPage() {
   const [error, setError] = useState("");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [minStock, setMinStock] = useState("");
-  const [maxStock, setMaxStock] = useState("");
+  const [selectedSupplier, setSelectedSupplier] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12);
@@ -199,6 +190,9 @@ export default function ProductsPage() {
   // Get unique categories
   const uniqueCategories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
+  // Get unique suppliers
+  const uniqueSuppliers = [...new Set(products.map(p => p.supplierName).filter(Boolean))].sort();
+
   // Filter products
   const filteredProducts = products.filter((product) => {
     if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -207,10 +201,7 @@ export default function ProductsPage() {
     if (selectedCategory && product.category !== selectedCategory) {
       return false;
     }
-    if (minStock && parseInt(minStock) > product.stock) {
-      return false;
-    }
-    if (maxStock && parseInt(maxStock) < product.stock) {
+    if (selectedSupplier && product.supplierName !== selectedSupplier) {
       return false;
     }
     return true;
@@ -225,12 +216,11 @@ export default function ProductsPage() {
   function resetFilters() {
     setSearchQuery("");
     setSelectedCategory("");
-    setMinStock("");
-    setMaxStock("");
+    setSelectedSupplier("");
     setCurrentPage(1);
   }
 
-  const hasActiveFilters = searchQuery || selectedCategory || minStock || maxStock;
+  const hasActiveFilters = searchQuery || selectedCategory || selectedSupplier;
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
@@ -241,7 +231,7 @@ export default function ProductsPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory, minStock, maxStock]);
+  }, [searchQuery, selectedCategory, selectedSupplier]);
 
   if (loading) {
     return (
@@ -345,13 +335,18 @@ export default function ProductsPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="add-stock">Stock</Label>
+                        <Label htmlFor="add-stock">Initial Stock</Label>
                         <Input
                           id="add-stock"
-                          type="number"
-                          min="0"
+                          type="text"
                           value={addForm.stock}
-                          onChange={(e) => setAddForm({ ...addForm, stock: e.target.value })}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '' || /^\d+$/.test(value)) {
+                              setAddForm({ ...addForm, stock: value || '0' });
+                            }
+                          }}
+                          onFocus={(e) => e.target.select()}
                           placeholder="0"
                         />
                       </div>
@@ -464,29 +459,26 @@ export default function ProductsPage() {
                     </select>
                   </div>
 
-                  {/* Stock Range Filter */}
+                  {/* Supplier Filter */}
                   <div>
-                    <Label className="text-sm mb-2 block">Stock Level</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Min"
-                        value={minStock}
-                        onChange={(e) => setMinStock(e.target.value)}
-                      />
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Max"
-                        value={maxStock}
-                        onChange={(e) => setMaxStock(e.target.value)}
-                      />
-                    </div>
+                    <Label htmlFor="supplier" className="text-sm mb-2 block">Supplier</Label>
+                    <select
+                      id="supplier"
+                      value={selectedSupplier}
+                      onChange={(e) => setSelectedSupplier(e.target.value)}
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm"
+                    >
+                      <option value="">All Suppliers</option>
+                      {uniqueSuppliers.map((supplier) => (
+                        <option key={supplier} value={supplier}>
+                          {supplier}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Reset Button */}
-                  {hasActiveFilters && (
+                  {hasActiveFilters ? (
                     <Button
                       variant="outline"
                       size="sm"
@@ -495,7 +487,7 @@ export default function ProductsPage() {
                     >
                       Clear Filters
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </CardContent>
             </div>
@@ -522,9 +514,7 @@ export default function ProductsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {paginatedProducts.map((product) => {
-                const profit = product.sellingPrice - product.purchasePrice;
-                return (
+              {paginatedProducts.map((product) => (
                   <Card key={product._id} className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
                     <CardContent className="pt-4">
                       <h3 className="font-semibold text-lg mb-2 truncate text-foreground">{product.name}</h3>
@@ -552,6 +542,12 @@ export default function ProductsPage() {
                             )}
                           </span>
                         </div>
+                        {product.supplierName && (
+                          <div>
+                            <span className="text-muted-foreground">Supplier:</span>
+                            <span className="block font-semibold">{product.supplierName}</span>
+                          </div>
+                        )}
                         {product.stock <= 2 && product.stock > 0 && (
                           <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded p-2 text-yellow-800 dark:text-yellow-400 text-xs font-medium">
                             ⚠️ Low Stock
@@ -601,8 +597,7 @@ export default function ProductsPage() {
                         </AlertDialog>
                       </div>
                     </Card>
-                  );
-              })}
+              ))}
             </div>
           )}
           

@@ -177,90 +177,98 @@ export default function AdminDashboard() {
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Today's Sales */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Today&apos;s Sales</CardTitle>
-              <ShoppingCart className="w-5 h-5 text-primary" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <>
-                  <div className="text-3xl font-bold text-foreground">{stats.todaySales}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Sales recorded today</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <Link href="/sales">
+            <Card className="shadow-md hover:shadow-xl transition-all cursor-pointer hover:scale-105 duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Today&apos;s Sales</CardTitle>
+                <ShoppingCart className="w-5 h-5 text-primary" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-foreground">{stats.todaySales}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Sales recorded today</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Monthly Revenue */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue</CardTitle>
-              <TrendingUp className="w-5 h-5 text-primary" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <>
-                  <div className="text-3xl font-bold text-foreground">₹{(stats.monthlyRevenue / 1000).toFixed(1)}K</div>
-                  <p className="text-xs text-muted-foreground mt-1">Revenue this month</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <Link href="/reports">
+            <Card className="shadow-md hover:shadow-xl transition-all cursor-pointer hover:scale-105 duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue</CardTitle>
+                <TrendingUp className="w-5 h-5 text-primary" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-foreground">₹{(stats.monthlyRevenue / 1000).toFixed(1)}K</div>
+                    <p className="text-xs text-muted-foreground mt-1">Revenue this month</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Pending Bills */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Bills</CardTitle>
-              <ClipboardList className="w-5 h-5 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <>
-                  <div className="text-3xl font-bold text-foreground">{stats.pendingBills}</div>
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-destructive" />
-                    Requires attention
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <Link href="/pending-bills">
+            <Card className="shadow-md hover:shadow-xl transition-all cursor-pointer hover:scale-105 duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Pending Bills</CardTitle>
+                <ClipboardList className="w-5 h-5 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-foreground">{stats.pendingBills}</div>
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-destructive" />
+                      Requires attention
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Low Stock Alert */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Low Stock Items</CardTitle>
-              <AlertCircle className="w-5 h-5 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <>
-                  <div className="text-3xl font-bold text-foreground">{stats.lowStock}</div>
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3 text-destructive" />
-                    Need restock
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <Link href="/stock">
+            <Card className="shadow-md hover:shadow-xl transition-all cursor-pointer hover:scale-105 duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Low Stock Items</CardTitle>
+                <AlertCircle className="w-5 h-5 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-foreground">{stats.lowStock}</div>
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 text-destructive" />
+                      Need restock
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Quick Actions Grid */}

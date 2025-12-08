@@ -246,12 +246,18 @@ export default function StockPage() {
                       <Label htmlFor="stock">Initial Stock</Label>
                       <Input
                         id="stock"
-                        type="number"
-                        min="0"
+                        type="text"
                         value={productForm.stock}
-                        onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '' || /^\d+$/.test(value)) {
+                            setProductForm({ ...productForm, stock: value || '0' });
+                          }
+                        }}
+                        onFocus={(e) => e.target.select()}
                         placeholder="0"
                       />
+                      <p className="text-xs text-muted-foreground mt-1">Enter initial stock quantity</p>
                     </div>
                     <div>
                       <Label htmlFor="supplierName">Supplier Name</Label>

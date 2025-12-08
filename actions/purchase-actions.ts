@@ -341,12 +341,13 @@ export async function getPendingPurchasesWithFilters(
 
     const data: PurchaseListItem[] = purchases.map((purchase) => {
       const paidAmount = purchase.paidAmount || 0;
+      const populatedProduct = purchase.productId as unknown as { _id: any; name: string };
       return {
         _id: purchase._id.toString(),
         date: purchase.date.toISOString(),
         supplierName: purchase.supplierName,
-        productId: purchase.productId.toString(),
-        productName: (purchase.productId as unknown as { name: string })?.name || "Unknown",
+        productId: populatedProduct._id?.toString() || purchase.productId.toString(),
+        productName: populatedProduct?.name || "Unknown",
         quantity: purchase.quantity,
         pricePerUnit: purchase.pricePerUnit,
         total: purchase.total,
