@@ -1,8 +1,10 @@
 'use client';
 
-import { Eye } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface PaymentHistory {
@@ -36,14 +38,33 @@ interface PendingBillsTableProps {
 }
 
 export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTableProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredSales = sales.filter((sale) =>
+    sale.customerName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
-      <Table className="text-base">
+    <div className="space-y-3">
+      {/* Search Filter */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="Search by customer name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+        <Table>
         <TableHeader className="bg-gray-50">
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Payment Type</TableHead>
-            <TableHead>Date / Items</TableHead>
+            <TableHead>Customer</TableHead>
+            <TableHead>Payment</TableHead>
+            <TableHead>Date</TableHead>
             <TableHead className="text-right">Total</TableHead>
             <TableHead className="text-right">Paid</TableHead>
             <TableHead className="text-right">Balance</TableHead>
@@ -51,27 +72,36 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sales.map((sale) => {
-            const totalPaid = sale.initialPayment + (sale.paymentHistory?.reduce((sum, p) => sum + p.amount, 0) || 0);
-            const actualBalance = sale.totalAmount - totalPaid;
+          {filteredSales.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                {searchQuery ? 'No customers found matching your search' : 'No pending bills'}
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredSales.map((sale) => {
+              const totalPaid = sale.initialPayment + (sale.paymentHistory?.reduce((sum, p) => sum + p.amount, 0) || 0);
+              const actualBalance = sale.totalAmount - totalPaid;
 
             return (
-              <TableRow key={sale._id} className="bg-gray-50/70">
-                <TableCell className="font-semibold text-gray-900">{sale.customerName}</TableCell>
+              <TableRow key={sale._id} className="hover:bg-gray-50">
+                <TableCell className="font-medium">{sale.customerName}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-gray-700 border-gray-200">
-                    {sale.paymentType}
-                  </Badge>
+                  <Badge variant="outline">{sale.paymentType}</Badge>
                 </TableCell>
-                <TableCell className="text-gray-700">
-                  {new Date(sale.date).toLocaleDateString()} • {sale.items.length} items
+                <TableCell className="text-sm text-gray-600">
+                  {new Date(sale.date).toLocaleDateString()}
+                  <br />
+                  {sale.items.length} items
                 </TableCell>
-                <TableCell className="text-right font-semibold text-gray-900">₹{sale.totalAmount.toFixed(2)}</TableCell>
-                <TableCell className="text-right font-semibold text-green-700">₹{totalPaid.toFixed(2)}</TableCell>
-                <TableCell className="text-right">
-                  <Badge variant="secondary" className="bg-red-100 text-red-700">
-                    ₹{actualBalance.toFixed(2)}
-                  </Badge>
+                <TableCell className="text-right font-semibold">
+                  ₹{sale.totalAmount.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right text-green-600 font-semibold">
+                  ₹{totalPaid.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right text-red-600 font-semibold">
+                  ₹{actualBalance.toFixed(2)}
                 </TableCell>
                 <TableCell className="text-right space-x-2">
                   {actualBalance > 0 && (
@@ -87,17 +117,16 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
                     size="sm"
                     variant="outline"
                     onClick={() => window.location.href = `/sales/${sale._id}`}
-                    title="View Complete Details"
                   >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Details
+                    <Eye className="h-4 w-4" />
                   </Button>
                 </TableCell>
               </TableRow>
             );
-          })}
+          }))}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

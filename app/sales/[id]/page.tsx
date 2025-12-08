@@ -395,7 +395,7 @@ export default function SaleDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-6">
+      <div className="min-h-screen bg-linear-to-br from-orange-50 to-amber-50 p-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12 text-gray-600">Loading sale details...</div>
         </div>
@@ -405,7 +405,7 @@ export default function SaleDetailsPage() {
 
   if (error || !sale) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-6">
+      <div className="min-h-screen bg-linear-to-br from-orange-50 to-amber-50 p-6">
         <div className="max-w-4xl mx-auto">
           <Button onClick={() => router.back()} variant="outline" className="mb-6">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -418,7 +418,7 @@ export default function SaleDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-6">
+    <div className="min-h-screen bg-linear-to-br from-orange-50 to-amber-50 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <SaleDetailsHeader

@@ -37,75 +37,124 @@ export default function ProductSearch({
   onAddToCart,
 }: ProductSearchProps) {
   return (
-    <Card className="p-6 border-0 shadow-sm bg-white">
-      <h2 className="text-lg font-semibold mb-4 text-gray-900">Add Items</h2>
+    <Card className="p-6 border-0 shadow-md bg-white">
+      <h2 className="text-xl font-bold mb-6 text-gray-900 flex items-center gap-2">
+        <Search className="h-5 w-5 text-orange-600" />
+        Add Items to Bill
+      </h2>
       <div className="space-y-4">
-        <div>
-          <Label className="text-sm font-medium text-gray-700">Search Products</Label>
-          <div className="relative mt-2">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        <div className="relative">
+          <Label className="text-sm font-semibold text-gray-700 mb-2 block">Search Products</Label>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input
-              placeholder="Type product name..."
+              placeholder="Start typing product name to search..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 border-gray-300"
+              className="pl-12 pr-4 h-12 text-base border-2 border-gray-300 focus:border-orange-500 rounded-lg"
             />
           </div>
 
-          {/* Search Results Dropdown */}
+          {/* Search Results Dropdown - Improved visibility */}
           {searchResults.length > 0 && (
-            <div className="absolute top-20 left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+            <div className="mt-2 bg-white border-2 border-orange-300 rounded-lg shadow-2xl max-h-80 overflow-y-auto">
+              <div className="p-2 bg-orange-50 border-b border-orange-200">
+                <p className="text-xs font-semibold text-orange-800 uppercase">
+                  {searchResults.length} Product{searchResults.length !== 1 ? 's' : ''} Found
+                </p>
+              </div>
               {searchResults.map((product) => (
                 <button
                   key={product._id}
                   onClick={() => onSelectProduct(product)}
-                  className="w-full text-left px-4 py-2 hover:bg-orange-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                  className="w-full text-left px-4 py-4 hover:bg-orange-50 border-b border-gray-200 last:border-b-0 transition-all hover:shadow-sm"
                 >
-                  <div className="font-medium text-gray-900">{product.name}</div>
-                  <div className="text-sm text-gray-600">
-                    ₹{product.sellingPrice} • Stock: {product.stock}
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="font-semibold text-base text-gray-900 mb-1">
+                        {product.name}
+                      </div>
+                      <div className="flex gap-4 text-sm">
+                        <span className="text-green-600 font-semibold">
+                          ₹{product.sellingPrice.toFixed(2)}
+                        </span>
+                        <span className="text-gray-600">
+                          Stock: <span className={product.stock > 10 ? 'text-green-600 font-medium' : 'text-orange-600 font-medium'}>
+                            {product.stock} units
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                    <Plus className="h-5 w-5 text-orange-600 shrink-0 ml-2" />
                   </div>
                 </button>
               ))}
             </div>
           )}
+
+          {searchQuery && searchResults.length === 0 && (
+            <div className="mt-2 bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+              <p className="text-sm text-red-600 font-medium">
+                No products found for &quot;{searchQuery}&quot;
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Selected Product Display */}
+        {/* Selected Product Display - Enhanced */}
         {selectedProduct && (
-          <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <p className="font-medium text-gray-900">{selectedProduct.name}</p>
-                <p className="text-sm text-gray-600">₹{selectedProduct.sellingPrice} each</p>
-                <p className="text-sm text-gray-600">Available: {selectedProduct.stock} units</p>
+          <div className="p-5 bg-linear-to-br from-orange-50 to-amber-50 border-2 border-orange-300 rounded-lg shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <p className="font-bold text-lg text-gray-900 mb-2">{selectedProduct.name}</p>
+                    <div className="space-y-1">
+                      <p className="text-base text-green-700 font-semibold">
+                        Price: ₹{selectedProduct.sellingPrice.toFixed(2)} per unit
+                      </p>
+                      <p className={`text-sm font-medium ${selectedProduct.stock > 10 ? 'text-gray-600' : 'text-orange-600'}`}>
+                        Available Stock: {selectedProduct.stock} units
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
               <button
                 onClick={onClearProduct}
-                className="p-1 hover:bg-orange-200 rounded transition-colors"
+                className="p-2 hover:bg-orange-200 rounded-lg transition-colors shrink-0"
+                title="Remove product"
               >
-                <X className="h-4 w-4 text-gray-600" />
+                <X className="h-5 w-5 text-gray-700" />
               </button>
             </div>
 
-            <div className="flex gap-2 items-end">
+            <div className="flex gap-3 items-end">
               <div className="flex-1">
-                <Label className="text-sm font-medium text-gray-700">Quantity</Label>
+                <Label className="text-sm font-semibold text-gray-700 mb-2 block">Quantity</Label>
                 <Input
                   type="number"
                   min="1"
                   max={selectedProduct.stock}
                   value={quantity}
                   onChange={(e) => onQuantityChange(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="mt-1 border-gray-300"
+                  className="h-11 text-base border-2 border-orange-300 focus:border-orange-500"
                 />
+              </div>
+              <div className="flex-1">
+                <Label className="text-sm font-semibold text-gray-700 mb-2 block">Subtotal</Label>
+                <div className="h-11 px-4 bg-white border-2 border-gray-300 rounded-md flex items-center">
+                  <span className="text-lg font-bold text-gray-900">
+                    ₹{(selectedProduct.sellingPrice * quantity).toFixed(2)}
+                  </span>
+                </div>
               </div>
               <Button
                 onClick={onAddToCart}
-                className="bg-orange-600 hover:bg-orange-700 text-white"
+                className="bg-orange-600 hover:bg-orange-700 text-white h-11 px-6 font-semibold shadow-md hover:shadow-lg transition-all"
               >
-                <Plus className="h-4 w-4 mr-1" />
-                Add
+                <Plus className="h-5 w-5 mr-2" />
+                Add to Cart
               </Button>
             </div>
           </div>

@@ -47,145 +47,166 @@ export default function SalesList({
 }: SalesListProps) {
   return (
     <div className="space-y-3">
-      {sales.map((sale) => (
-        <Card key={sale._id} className="p-4 border-0 shadow-sm bg-white">
-          <button
-            onClick={() => onToggleExpand(sale._id)}
-            className="w-full text-left"
+      {sales.map((sale) => {
+        const isPaid = sale.status === 'PAID' && sale.balanceAmount === 0;
+        
+        return (
+          <Card 
+            key={sale._id} 
+            className="p-4 hover:shadow-md transition-shadow"
           >
-            <div className="flex justify-between items-center">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <h3 className="font-semibold text-gray-900">{sale.customerName}</h3>
-                  <Badge 
-                    variant={sale.status === 'PAID' ? 'secondary' : 'default'} 
-                    className={sale.status === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}
-                  >
-                    {sale.status}
-                  </Badge>
-                  <Badge variant="outline" className="text-gray-600">
-                    {sale.paymentType}
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  {new Date(sale.date).toLocaleDateString()} • {sale.items.length} items
-                </p>
-                {sale.balanceAmount > 0 && (
-                  <div className="mt-2 flex gap-4 text-xs">
+            <button
+              onClick={() => onToggleExpand(sale._id)}
+              className="w-full text-left"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-gray-900">{sale.customerName}</h3>
+                    <Badge variant={isPaid ? "default" : "secondary"} className="text-xs">
+                      {isPaid ? 'PAID' : 'PENDING'}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {sale.paymentType}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    {new Date(sale.date).toLocaleDateString()} • {sale.items.length} items
+                  </p>
+                  
+                  <div className="flex gap-4 text-sm">
                     <div>
                       <span className="text-gray-500">Total: </span>
-                      <span className="font-semibold text-gray-700">₹{sale.totalAmount.toFixed(2)}</span>
+                      <span className="font-semibold">₹{sale.totalAmount.toFixed(2)}</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Paid: </span>
                       <span className="font-semibold text-green-600">₹{sale.initialPayment.toFixed(2)}</span>
                     </div>
-                    <div>
-                      <span className="text-gray-500">Balance: </span>
-                      <span className="font-semibold text-red-600">₹{sale.balanceAmount.toFixed(2)}</span>
-                    </div>
+                    {sale.balanceAmount > 0 && (
+                      <div>
+                        <span className="text-gray-500">Balance: </span>
+                        <span className="font-semibold text-red-600">₹{sale.balanceAmount.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+                <div className="text-right ml-4">
+                  <div className="font-bold text-xl">₹{sale.totalAmount.toFixed(2)}</div>
+                  {isPaid ? (
+                    <Badge className="bg-green-600">Paid</Badge>
+                  ) : (
+                    <Badge variant="destructive">₹{sale.balanceAmount.toFixed(2)} due</Badge>
+                  )}
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-bold text-lg text-orange-600">₹{sale.totalAmount.toFixed(2)}</p>
-                {sale.balanceAmount > 0 && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Due: ₹{sale.balanceAmount.toFixed(2)}
-                  </p>
-                )}
-              </div>
-            </div>
-          </button>
+            </button>
 
-          {/* Quick EMI Payment Button - Always Visible for Pending */}
-          {sale.balanceAmount > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+          {/* Action Buttons */}
+          <div className="mt-3 pt-3 border-t flex gap-2">
+            {sale.balanceAmount > 0 && (
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
                   onPayEMI(sale);
                 }}
                 size="sm"
-                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium"
+                className="flex-1"
               >
-                💰 Pay EMI
+                Pay EMI
               </Button>
+            )}
+            {isPaid && (
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleExpand(sale._id);
+                  onDownloadInvoice(sale);
                 }}
                 size="sm"
                 variant="outline"
                 className="flex-1"
               >
-                📋 View Details
+                <Download className="h-4 w-4 mr-1" />
+                Invoice
               </Button>
-            </div>
-          )}
+            )}
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.href = `/sales/${sale._id}`;
+              }}
+              size="sm"
+              variant="outline"
+              className="flex-1"
+            >
+              Details
+            </Button>
+          </div>
 
           {/* Expanded Details */}
           {expandedSale === sale._id && (
-            <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
-              <div className="space-y-2">
+            <div className="mt-3 pt-3 border-t space-y-3">
+              <div className="space-y-1">
                 {sale.items.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-sm">
                     <span className="text-gray-600">
                       {item.productName} × {item.quantity}
                     </span>
-                    <span className="font-medium text-gray-900">₹{item.subtotal.toFixed(2)}</span>
+                    <span className="font-medium">₹{item.subtotal.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
 
               {/* Payment History */}
               {sale.paymentHistory && sale.paymentHistory.length > 0 && (
-                <div className="pt-3 border-t border-gray-100">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">💳 Payment History:</h4>
-                  <div className="space-y-2">
+                <div className="pt-2 border-t">
+                  <h4 className="text-sm font-semibold mb-2">Payment History</h4>
+                  <div className="space-y-1">
                     {sale.paymentHistory.map((payment, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-sm bg-green-50 p-2 rounded border border-green-200">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-gray-900">Installment {idx + 1}</span>
-                          <span className="text-gray-600 text-xs">
+                      <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
+                        <div>
+                          <span className="font-medium">EMI {idx + 1}</span>
+                          <span className="text-gray-500 text-xs ml-2">
                             {new Date(payment.date).toLocaleDateString()} • {payment.paymentType}
                           </span>
                         </div>
-                        <span className="font-semibold text-green-600">₹{payment.amount.toFixed(2)}</span>
+                        <span className="font-semibold">₹{payment.amount.toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {(sale.initialPayment > 0 || sale.balanceAmount > 0) && (
-                <div className="pt-2 border-t border-gray-100">
-                  <div className="bg-blue-50 p-3 rounded-lg space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700 font-medium">Total Amount:</span>
-                      <span className="font-semibold text-gray-900">₹{sale.totalAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-green-700 font-medium">Paid:</span>
-                      <span className="font-semibold text-green-600">₹{sale.initialPayment.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm pt-2 border-t border-blue-200">
-                      <span className="text-red-700 font-medium">Balance Due:</span>
-                      <span className="font-bold text-red-600">₹{sale.balanceAmount.toFixed(2)}</span>
-                    </div>
-                  </div>
+              {/* Payment Summary */}
+              <div className="pt-2 border-t bg-gray-50 p-3 rounded text-sm">
+                <div className="flex justify-between mb-1">
+                  <span className="text-gray-600">Total:</span>
+                  <span className="font-semibold">₹{sale.totalAmount.toFixed(2)}</span>
                 </div>
-              )}
+                <div className="flex justify-between mb-1">
+                  <span className="text-gray-600">Paid:</span>
+                  <span className="font-semibold text-green-600">₹{sale.initialPayment.toFixed(2)}</span>
+                </div>
+                {sale.balanceAmount > 0 ? (
+                  <div className="flex justify-between pt-1 border-t">
+                    <span className="text-gray-600">Balance:</span>
+                    <span className="font-bold text-red-600">₹{sale.balanceAmount.toFixed(2)}</span>
+                  </div>
+                ) : (
+                  <div className="pt-1 border-t text-center">
+                    <Badge className="bg-green-600">Fully Paid</Badge>
+                  </div>
+                )}
+              </div>
               
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2">
                 {sale.balanceAmount > 0 && (
                   <Button
                     onClick={() => onPayEMI(sale)}
                     size="sm"
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="flex-1"
                   >
-                    💰 Make Payment
+                    Make Payment
                   </Button>
                 )}
                 <Button
@@ -195,20 +216,22 @@ export default function SalesList({
                   className="flex-1"
                 >
                   <Download className="h-4 w-4 mr-1" />
-                  Download Invoice
+                  Invoice
                 </Button>
                 <Button
                   onClick={() => window.location.href = `/sales/${sale._id}`}
                   size="sm"
-                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                  variant="outline"
+                  className="flex-1"
                 >
-                  📋 View Complete Details
+                  Full Details
                 </Button>
               </div>
             </div>
           )}
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }

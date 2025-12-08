@@ -54,8 +54,6 @@ export default function StockPage() {
   const [searchText, setSearchText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState("");
-  const [minStock, setMinStock] = useState("");
-  const [maxStock, setMaxStock] = useState("");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   // Product form state
@@ -115,16 +113,6 @@ export default function StockPage() {
       return false;
     }
     
-    // Min stock filter
-    if (minStock && parseInt(minStock) > product.stock) {
-      return false;
-    }
-    
-    // Max stock filter
-    if (maxStock && parseInt(maxStock) < product.stock) {
-      return false;
-    }
-    
     return true;
   });
 
@@ -133,12 +121,10 @@ export default function StockPage() {
     setSearchText("");
     setSelectedCategory("");
     setSelectedSupplier("");
-    setMinStock("");
-    setMaxStock("");
   }
 
   // Check if any filter is active
-  const hasActiveFilters = searchText || selectedCategory || selectedSupplier || minStock || maxStock;
+  const hasActiveFilters = searchText || selectedCategory || selectedSupplier;
 
   // Handle create product
   async function handleCreateProduct(e: React.FormEvent) {
@@ -395,27 +381,6 @@ export default function StockPage() {
                           </option>
                         ))}
                       </select>
-                    </div>
-                  </div>
-
-                  {/* Stock Range */}
-                  <div>
-                    <Label className="text-xs mb-2 block">Stock Level</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Min"
-                        value={minStock}
-                        onChange={(e) => setMinStock(e.target.value)}
-                      />
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Max"
-                        value={maxStock}
-                        onChange={(e) => setMaxStock(e.target.value)}
-                      />
                     </div>
                   </div>
 

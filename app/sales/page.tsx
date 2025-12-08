@@ -10,7 +10,7 @@ import CustomerInfoForm from '@/components/sales/CustomerInfoForm';
 import ProductSearch from '@/components/sales/ProductSearch';
 import BillSummary from '@/components/sales/BillSummary';
 import PendingBillsTable from '@/components/sales/PendingBillsTable';
-import SalesList from '@/components/sales/SalesList';
+import SalesListWithFilter from '@/components/sales/SalesListWithFilter';
 import PaymentDialog from '@/components/sales/PaymentDialog';
 
 interface CartItem {
@@ -302,6 +302,24 @@ export default function SalesPage() {
       setPaymentLoading(false);
     }
   };
+
+  // Load from localStorage on mount (client-side only)
+  useEffect(() => {
+    const savedTab = localStorage.getItem('salesActiveTab');
+    const savedFilter = localStorage.getItem('salesStatusFilter');
+    if (savedTab) setActiveTab(savedTab);
+    if (savedFilter) setStatusFilter(savedFilter);
+  }, []);
+
+  // Save activeTab to localStorage
+  useEffect(() => {
+    localStorage.setItem('salesActiveTab', activeTab);
+  }, [activeTab]);
+
+  // Save statusFilter to localStorage
+  useEffect(() => {
+    localStorage.setItem('salesStatusFilter', statusFilter);
+  }, [statusFilter]);
 
   // Load sales on mount and when tab changes
   useEffect(() => {
@@ -598,7 +616,7 @@ export default function SalesPage() {
                   }}
                 />
               ) : (
-                <SalesList
+                <SalesListWithFilter
                   sales={filteredSales}
                   expandedSale={expandedSale}
                   onToggleExpand={(saleId) => setExpandedSale(expandedSale === saleId ? null : saleId)}
