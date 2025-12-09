@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cache } from "react";
 
 export interface ActionResponse<T = unknown> {
   success: boolean;
@@ -110,7 +112,7 @@ export async function validateAndPrepareItem(
 }
 
 // Get product by name (for search functionality)
-export async function searchProducts(
+export const searchProducts = cache(async function(
   searchQuery: string
 ): Promise<ActionResponse<Array<{ id: string; name: string; stock: number; sellingPrice: number }>>> {
   try {
@@ -149,7 +151,7 @@ export async function searchProducts(
       error: errorMessage,
     };
   }
-}
+});
 
 // Create and save a sale
 export async function createSale(request: CreateSaleRequest): Promise<ActionResponse<SaleData>> {
@@ -309,7 +311,7 @@ export async function createSale(request: CreateSaleRequest): Promise<ActionResp
 }
 
 // Get all sales with optional filters
-export async function getSales(
+export const getSales = cache(async function(
   filters?: {
     status?: "PAID" | "PENDING";
     startDate?: Date;
@@ -377,10 +379,10 @@ export async function getSales(
       error: errorMessage,
     };
   }
-}
+});
 
 // Get single sale by ID
-export async function getSaleById(id: string): Promise<ActionResponse<SaleData>> {
+export const getSaleById = cache(async function(id: string): Promise<ActionResponse<SaleData>> {
   try {
     const sale = await prisma.sale.findUnique({
       where: { id },
@@ -430,7 +432,7 @@ export async function getSaleById(id: string): Promise<ActionResponse<SaleData>>
       error: errorMessage,
     };
   }
-}
+});
 
 // Mark pending sale as paid
 export async function markSaleAsPaid(id: string): Promise<ActionResponse<SaleData>> {
@@ -501,7 +503,7 @@ export async function markSaleAsPaid(id: string): Promise<ActionResponse<SaleDat
 }
 
 // Get pending sales (for billing)
-export async function getPendingSales(): Promise<ActionResponse<SaleData[]>> {
+export const getPendingSales = cache(async function(): Promise<ActionResponse<SaleData[]>> {
   try {
     const sales = await prisma.sale.findMany({
       where: { status: "PENDING" },
@@ -547,7 +549,7 @@ export async function getPendingSales(): Promise<ActionResponse<SaleData[]>> {
       error: errorMessage,
     };
   }
-}
+});
 
 // Make additional payment (EMI)
 export async function makeAdditionalPayment(
@@ -653,7 +655,7 @@ export async function makeAdditionalPayment(
 }
 
 // Get sales statistics
-export async function getSalesStats(): Promise<
+export const getSalesStats = cache(async function(): Promise<
   ActionResponse<{
     totalSales: number;
     totalRevenue: number;
@@ -701,4 +703,4 @@ export async function getSalesStats(): Promise<
       error: errorMessage,
     };
   }
-}
+});

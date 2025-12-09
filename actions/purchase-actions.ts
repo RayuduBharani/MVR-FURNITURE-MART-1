@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cache } from "react";
 
 // Types for responses
 export type ActionResponse<T = unknown> = {
@@ -136,7 +138,7 @@ export async function addPurchase(formData: {
 }
 
 // GET ALL PURCHASES
-export async function getPurchases(
+export const getPurchases = cache(async function(
   status?: PurchaseStatus
 ): Promise<ActionResponse<PurchaseListItem[]>> {
   try {
@@ -175,10 +177,10 @@ export async function getPurchases(
     console.error("Error fetching purchases:", error);
     return { success: false, error: "Failed to fetch purchases" };
   }
-}
+});
 
 // GET PURCHASES BY PRODUCT
-export async function getPurchasesByProduct(
+export const getPurchasesByProduct = cache(async function(
   productId: string
 ): Promise<ActionResponse<PurchaseListItem[]>> {
   try {
@@ -218,10 +220,10 @@ export async function getPurchasesByProduct(
     console.error("Error fetching purchases by product:", error);
     return { success: false, error: "Failed to fetch purchases" };
   }
-}
+});
 
 // GET PENDING BILLS TOTAL (calculates total - paidAmount for pending purchases)
-export async function getPendingBillsTotal(): Promise<ActionResponse<number>> {
+export const getPendingBillsTotal = cache(async function(): Promise<ActionResponse<number>> {
   try {
     const result = await prisma.purchase.aggregate({
       where: { status: "PENDING" },
@@ -240,7 +242,7 @@ export async function getPendingBillsTotal(): Promise<ActionResponse<number>> {
     console.error("Error fetching pending bills total:", error);
     return { success: false, error: "Failed to fetch pending bills total" };
   }
-}
+});
 
 // MARK PURCHASE AS PAID
 export async function markPurchaseAsPaid(id: string): Promise<ActionResponse> {
@@ -276,7 +278,7 @@ export async function markPurchaseAsPaid(id: string): Promise<ActionResponse> {
 }
 
 // GET TOTAL STOCK PURCHASED FOR A PRODUCT
-export async function getTotalStockPurchased(
+export const getTotalStockPurchased = cache(async function(
   productId: string
 ): Promise<ActionResponse<number>> {
   try {
@@ -294,10 +296,10 @@ export async function getTotalStockPurchased(
     console.error("Error fetching total stock purchased:", error);
     return { success: false, error: "Failed to fetch total stock purchased" };
   }
-}
+});
 
 // GET PENDING PURCHASES WITH FILTERS (Optimized for Pending Bills page)
-export async function getPendingPurchasesWithFilters(
+export const getPendingPurchasesWithFilters = cache(async function(
   dateFilter?: {
     type: "monthly" | "yearly" | "all";
     month?: string;
@@ -358,7 +360,7 @@ export async function getPendingPurchasesWithFilters(
     console.error("Error fetching pending purchases:", error);
     return { success: false, error: "Failed to fetch pending purchases" };
   }
-}
+});
 
 // GET PENDING BILLS SUMMARY STATS
 export type PendingBillsStats = {
@@ -368,7 +370,7 @@ export type PendingBillsStats = {
   bySupplier: { supplierName: string; totalPending: number; count: number }[];
 };
 
-export async function getPendingBillsStats(
+export const getPendingBillsStats = cache(async function(
   dateFilter?: {
     type: "monthly" | "yearly" | "all";
     month?: string;
@@ -437,4 +439,4 @@ export async function getPendingBillsStats(
     console.error("Error fetching pending bills stats:", error);
     return { success: false, error: "Failed to fetch pending bills stats" };
   }
-}
+});

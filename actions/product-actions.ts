@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cache } from "react";
 import { Product } from "@prisma/client";
 
 // Types for responses
@@ -39,7 +40,7 @@ function serializeProduct(product: Product): ProductData {
 }
 
 // GET ALL PRODUCTS
-export async function getProducts(): Promise<ActionResponse<ProductData[]>> {
+export const getProducts = cache(async function(): Promise<ActionResponse<ProductData[]>> {
   try {
     const products = await prisma.product.findMany({
       orderBy: { createdAt: 'desc' },
@@ -52,10 +53,10 @@ export async function getProducts(): Promise<ActionResponse<ProductData[]>> {
     console.error("Error fetching products:", error);
     return { success: false, error: "Failed to fetch products" };
   }
-}
+});
 
 // GET SINGLE PRODUCT BY ID
-export async function getProductById(id: string): Promise<ActionResponse<ProductData>> {
+export const getProductById = cache(async function(id: string): Promise<ActionResponse<ProductData>> {
   try {
     const product = await prisma.product.findUnique({
       where: { id },
@@ -70,7 +71,7 @@ export async function getProductById(id: string): Promise<ActionResponse<Product
     console.error("Error fetching product:", error);
     return { success: false, error: "Failed to fetch product" };
   }
-}
+});
 
 // CREATE PRODUCT
 export async function createProduct(formData: {
@@ -294,7 +295,7 @@ export async function deleteProduct(id: string): Promise<ActionResponse> {
 }
 
 // GET TOTAL STOCK OF A PRODUCT
-export async function getProductStock(id: string): Promise<ActionResponse<number>> {
+export const getProductStock = cache(async function(id: string): Promise<ActionResponse<number>> {
   try {
     const product = await prisma.product.findUnique({
       where: { id },
@@ -310,4 +311,4 @@ export async function getProductStock(id: string): Promise<ActionResponse<number
     console.error("Error fetching product stock:", error);
     return { success: false, error: "Failed to fetch product stock" };
   }
-}
+});

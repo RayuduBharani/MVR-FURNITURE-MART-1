@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cache } from "react";
 import { Expenditure } from "@prisma/client";
 
 // Types for responses
@@ -117,7 +118,7 @@ export async function createExpenditure(
 }
 
 // GET EXPENDITURES BY MONTH & YEAR WITH TOTAL
-export async function getExpendituresByMonth(
+export const getExpendituresByMonth = cache(async function(
   year: number,
   month: number
 ): Promise<ActionResponse<ExpenditureFilterResponse>> {
@@ -166,10 +167,10 @@ export async function getExpendituresByMonth(
       error: error instanceof Error ? error.message : "Failed to fetch expenditures",
     };
   }
-}
+});
 
 // GET ALL EXPENDITURES (NO FILTER)
-export async function getAllExpenditures(): Promise<
+export const getAllExpenditures = cache(async function(): Promise<
   ActionResponse<ExpenditureData[]>
 > {
   try {
@@ -188,10 +189,10 @@ export async function getAllExpenditures(): Promise<
       error: error instanceof Error ? error.message : "Failed to fetch expenditures",
     };
   }
-}
+});
 
 // GET SINGLE EXPENDITURE BY ID
-export async function getExpenditureById(
+export const getExpenditureById = cache(async function(
   id: string
 ): Promise<ActionResponse<ExpenditureData>> {
   try {
@@ -217,7 +218,7 @@ export async function getExpenditureById(
       error: error instanceof Error ? error.message : "Failed to fetch expenditure",
     };
   }
-}
+});
 
 // DELETE EXPENDITURE
 export async function deleteExpenditure(
@@ -313,7 +314,7 @@ export async function updateExpenditure(
 }
 
 // GET TOTAL EXPENDITURE FOR A SPECIFIC MONTH
-export async function getMonthlyTotal(
+export const getMonthlyTotal = cache(async function(
   year: number,
   month: number
 ): Promise<ActionResponse<{ totalAmount: number }>> {
@@ -341,10 +342,10 @@ export async function getMonthlyTotal(
       error: error instanceof Error ? error.message : "Failed to calculate monthly total",
     };
   }
-}
+});
 
 // GET EXPENDITURES SUMMARY BY CATEGORY FOR A MONTH
-export async function getExpendituresByCategoryForMonth(
+export const getExpendituresByCategoryForMonth = cache(async function(
   year: number,
   month: number
 ): Promise<
@@ -382,10 +383,10 @@ export async function getExpendituresByCategoryForMonth(
       error: error instanceof Error ? error.message : "Failed to fetch category summary",
     };
   }
-}
+});
 
 // GET AVAILABLE YEARS (for filter dropdown)
-export async function getAvailableYears(): Promise<ActionResponse<number[]>> {
+export const getAvailableYears = cache(async function(): Promise<ActionResponse<number[]>> {
   try {
     const result = await prisma.expenditure.findMany({
       distinct: ['year'],
@@ -406,4 +407,4 @@ export async function getAvailableYears(): Promise<ActionResponse<number[]>> {
       error: error instanceof Error ? error.message : "Failed to fetch available years",
     };
   }
-}
+});

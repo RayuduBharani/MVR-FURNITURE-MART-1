@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { cache } from "react";
 
 export type DashboardStats = {
   todaySales: number;
@@ -24,7 +25,7 @@ export type ActionResponse<T = unknown> = {
   error?: string;
 };
 
-export async function getDashboardStats(): Promise<ActionResponse<DashboardStats>> {
+export const getDashboardStats = cache(async function(): Promise<ActionResponse<DashboardStats>> {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -105,9 +106,10 @@ export async function getDashboardStats(): Promise<ActionResponse<DashboardStats
       error: errorMessage,
     };
   }
-}
+});
 
-export async function getRecentActivities(): Promise<ActionResponse<RecentActivity[]>> {
+//  add cache here
+export const getRecentActivities = cache(async function(): Promise<ActionResponse<RecentActivity[]>> {
   try {
     const activities: RecentActivity[] = [];
 
@@ -191,7 +193,7 @@ export async function getRecentActivities(): Promise<ActionResponse<RecentActivi
       error: errorMessage,
     };
   }
-}
+});
 
 function getTimeAgo(date: Date): string {
   const now = new Date();

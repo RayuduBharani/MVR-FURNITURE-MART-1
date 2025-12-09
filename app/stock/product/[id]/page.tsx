@@ -291,90 +291,178 @@ export default function ProductDetailPage({
     }
   }
 
-  // Handle download payment transaction as PDF
-  function handleDownloadPayment(payment: PaymentData, productName: string) {
-    const doc = new jsPDF();
-    
-    // Set colors and fonts
-    doc.setFont("helvetica");
-    
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(40, 120, 220);
-    doc.text("PAYMENT RECEIPT", 20, 20);
-    
-    // Separator line
-    doc.setDrawColor(200, 200, 200);
-    doc.line(20, 28, 190, 28);
-    
-    // Receipt details
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    
-    let yPosition = 40;
-    const lineHeight = 8;
-    
-    // Left column
-    doc.setFont("helvetica", "bold");
-    doc.text("Product:", 20, yPosition);
-    doc.setFont("helvetica", "normal");
-    doc.text(productName, 60, yPosition);
-    
-    yPosition += lineHeight;
-    doc.setFont("helvetica", "bold");
-    doc.text("Transaction ID:", 20, yPosition);
-    doc.setFont("helvetica", "normal");
-    doc.text(payment.id.toString(), 60, yPosition);
-    
-    yPosition += lineHeight;
-    doc.setFont("helvetica", "bold");
-    doc.text("Payment Date:", 20, yPosition);
-    doc.setFont("helvetica", "normal");
-    doc.text(new Date(payment.paymentDate).toLocaleDateString(), 60, yPosition);
-    
-    yPosition += lineHeight;
-    doc.setFont("helvetica", "bold");
-    doc.text("Payment Method:", 20, yPosition);
-    doc.setFont("helvetica", "normal");
-    doc.text(payment.paymentMethod || "Not specified", 60, yPosition);
-    
-    // Amount section with background
-    yPosition += lineHeight + 5;
-    doc.setFillColor(240, 245, 255);
-    doc.rect(20, yPosition - 5, 170, 12, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(40, 120, 220);
-    doc.text("Amount:", 20, yPosition + 2);
-    doc.setFontSize(14);
-    doc.text(`₹${payment.amount.toFixed(2)}`, 60, yPosition + 2);
-    
-    // Notes section
-    yPosition += lineHeight + 8;
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("Notes:", 20, yPosition);
-    doc.setFont("helvetica", "normal");
-    const notesText = payment.notes || "No additional notes";
-    const wrappedNotes = doc.splitTextToSize(notesText, 150);
-    doc.text(wrappedNotes, 20, yPosition + lineHeight);
-    
-    yPosition += lineHeight * (wrappedNotes.length + 1) + 5;
-    
-    // Footer
-    doc.setDrawColor(200, 200, 200);
-    doc.line(20, yPosition, 190, yPosition);
-    yPosition += 8;
-    
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, yPosition);
-    doc.text("This is an electronically generated receipt", 20, yPosition + 6);
-    
-    // Save PDF
-    const fileName = `payment-receipt-${new Date(payment.paymentDate).toISOString().split("T")[0]}.pdf`;
-    doc.save(fileName);
+// Handle download payment transaction as PDF
+function handleDownloadPayment(payment: PaymentData, productName: string) {
+  // Find the matching purchase for this payment
+  const purchase = purchases.find(p => p.id === payment.purchaseId);
+  const supplierName = purchase?.supplierName || '-';
+  const quantity = purchase?.quantity ?? '-';
+  const remainingAmount = purchase ? (purchase.total - purchase.paidAmount) : '-';
+
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const leftMargin = 15;
+  const rightMargin = 15;
+  let yPos = 15;
+
+  // ===== HEADER SECTION =====
+  // Company Details - Left Side
+  doc.setFontSize(16);
+  doc.setFont('courier', 'bold');
+  doc.text('MVR FURNITURE MART', leftMargin, yPos);
+
+  yPos += 8;
+  doc.setFontSize(10);
+  doc.setFont('courier', 'normal');
+  doc.text('Furniture Store & Supplies', leftMargin, yPos);
+
+  yPos += 5;
+  doc.setFontSize(9);
+  doc.text('Address: Kakinda, Andhra Pradesh', leftMargin, yPos);
+
+  yPos += 4;
+  doc.text('Phone: +91 9876543210', leftMargin, yPos);
+
+  // Receipt Details - Right Side
+  const rightStartX = pageWidth - rightMargin - 70;
+  yPos = 15;
+
+  doc.setFontSize(10);
+  doc.setFont('courier', 'bold');
+  doc.text('Transaction ID:', rightStartX, yPos);
+  
+  doc.setFont('courier', 'normal');
+  const transactionIdText = doc.splitTextToSize(payment.id.toString(), 40);
+  doc.text(transactionIdText, rightStartX + 35, yPos);
+  if (transactionIdText.length > 1) {
+    yPos += (transactionIdText.length - 1) * 5;
   }
+
+  yPos += 7;
+  doc.setFont('courier', 'bold');
+  doc.text('Date:', rightStartX, yPos);
+  
+  doc.setFont('courier', 'normal');
+  const dateStr = new Date(payment.paymentDate).toLocaleDateString('en-IN');
+  doc.text(dateStr, rightStartX + 35, yPos);
+
+  yPos += 7;
+  doc.setFont('courier', 'bold');
+  doc.text('Product:', rightStartX, yPos);
+  
+  doc.setFont('courier', 'normal');
+  const maxWidth = 35;
+  const splitProductName = doc.splitTextToSize(productName, maxWidth);
+  doc.text(splitProductName, rightStartX + 35, yPos);
+  
+  if (splitProductName.length > 1) {
+    yPos += (splitProductName.length - 1) * 5;
+  }
+
+  yPos += 7;
+  doc.setFont('courier', 'bold');
+  doc.text('Method:', rightStartX, yPos);
+  
+  doc.setFont('courier', 'normal');
+  doc.text(payment.paymentMethod || 'Not specified', rightStartX + 35, yPos);
+
+  // Separator line
+  yPos = 50;
+  doc.setLineWidth(1);
+  doc.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+  // ===== AMOUNT SECTION =====
+  yPos += 12;
+  doc.setFontSize(10);
+  doc.setFont('courier', 'bold');
+  doc.text('AMOUNT PAID:', leftMargin + 5, yPos);
+  
+  // Format amount without rupee symbol first, then add it separately
+  const amountText = 'Rs. ' + payment.amount.toLocaleString('en-IN', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  });
+  doc.text(amountText, leftMargin + 5 + 50, yPos - 25); // Adjusted yPos for correct placement
+
+  // ===== SUPPLIER, COUNT, REMAINING SECTION =====
+  yPos += 10;
+  doc.setFontSize(10);
+  doc.setFont('courier', 'bold');
+  doc.text('SUPPLIER:', leftMargin + 5, yPos);
+  doc.setFont('courier', 'normal');
+  doc.text(supplierName, leftMargin + 60, yPos);
+
+  yPos += 7;
+  doc.setFont('courier', 'bold');
+  doc.text('COUNT:', leftMargin + 5, yPos);
+  doc.setFont('courier', 'normal');
+  doc.text(quantity.toString(), leftMargin + 60, yPos);
+
+  yPos += 7;
+  doc.setFont('courier', 'bold');
+  doc.text('REMAINING:', leftMargin + 5, yPos);
+  doc.setFont('courier', 'normal');
+  
+  let remainingText = '-';
+  if (typeof remainingAmount === 'number') {
+    const formattedRemaining = remainingAmount.toLocaleString('en-IN', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+    remainingText = 'Rs. ' + formattedRemaining;
+  }
+  doc.text(remainingText, leftMargin + 60, yPos);
+
+  yPos += 7;
+  doc.setFont('courier', 'bold');
+  doc.text('TOTAL AMOUNT:', leftMargin + 5, yPos);
+  doc.setFont('courier', 'normal');
+  doc.text(
+    purchase && typeof purchase.total === 'number'
+      ? 'Rs. ' + purchase.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '-',
+    leftMargin + 60,
+    yPos
+  );
+
+  yPos += 8;
+  doc.setLineWidth(1);
+  doc.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+  // ===== NOTES SECTION =====
+  yPos += 10;
+  doc.setFontSize(10);
+  doc.setFont('courier', 'bold');
+  doc.text('NOTES:', leftMargin + 5, yPos);
+
+  yPos += 8;
+  doc.setFontSize(9);
+  doc.setFont('courier', 'normal');
+  const notesText = payment.notes || 'No additional notes';
+  const wrappedNotes = doc.splitTextToSize(notesText, 160);
+  doc.text(wrappedNotes, leftMargin + 5, yPos);
+
+  yPos += wrappedNotes.length * 5 + 10;
+
+  // Separator line
+  doc.setLineWidth(0.5);
+  doc.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+  // ===== FOOTER =====
+  yPos = pageHeight - 20;
+  doc.setFontSize(9);
+  doc.setFont('courier', 'normal');
+  doc.text('Thank you for your payment!', pageWidth / 2, yPos, { align: 'center' });
+
+  yPos += 5;
+  doc.setFontSize(8);
+  doc.text('This is a computer-generated receipt. No signature required.', pageWidth / 2, yPos, { align: 'center' });
+
+  // Save PDF
+  const fileName = `Payment_Receipt_${productName.replace(/\s+/g, '_')}_${dateStr.replace(/\//g, '-')}.pdf`;
+  doc.save(fileName);
+}
 
   if (loading) {
     return (

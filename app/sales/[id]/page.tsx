@@ -121,274 +121,387 @@ export default function SaleDetailsPage() {
   };
 
   const generateAndDownloadInvoice = useCallback(() => {
-    if (!sale) return;
+  if (!sale) return;
 
-    try {
-      const pdf = new jsPDF();
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      
-      // Header
-      pdf.setFontSize(20);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('MVR FURNITURE MART', pageWidth / 2, 20, { align: 'center' });
-      
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('Quality Furniture for Every Home', pageWidth / 2, 27, { align: 'center' });
-      
-      // Line separator
-      pdf.setLineWidth(0.5);
-      pdf.line(15, 32, pageWidth - 15, 32);
-      
-      // Invoice title
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('INVOICE', pageWidth / 2, 42, { align: 'center' });
-      
-      // Customer info
-      let yPosition = 55;
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Customer:', 15, yPosition);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(sale.customerName, 45, yPosition);
-      
-      yPosition += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Date:', 15, yPosition);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(new Date(sale.date).toLocaleDateString(), 45, yPosition);
-      
-      yPosition += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Payment:', 15, yPosition);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(sale.paymentType, 45, yPosition);
-      
-      yPosition += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Status:', 15, yPosition);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(sale.status, 45, yPosition);
-      
-      // Items table header
-      yPosition += 15;
-      pdf.setFillColor(245, 245, 245);
-      pdf.rect(15, yPosition - 5, pageWidth - 30, 10, 'F');
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Item', 20, yPosition);
-      pdf.text('Qty', 100, yPosition);
-      pdf.text('Price', 130, yPosition);
-      pdf.text('Total', 165, yPosition);
-      
-      // Items
-      yPosition += 10;
-      pdf.setFont('helvetica', 'normal');
-      sale.items.forEach((item) => {
-        pdf.text(item.productName.substring(0, 30), 20, yPosition);
-        pdf.text(item.quantity.toString(), 100, yPosition);
-        pdf.text(`₹${item.price.toFixed(2)}`, 130, yPosition);
-        pdf.text(`₹${item.subtotal.toFixed(2)}`, 165, yPosition);
-        yPosition += 8;
-      });
-      
-      // Total section
-      yPosition += 5;
-      pdf.line(15, yPosition, pageWidth - 15, yPosition);
-      yPosition += 10;
-      
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Total Amount:', 120, yPosition);
-      pdf.text(`₹${sale.totalAmount.toFixed(2)}`, pageWidth - 25, yPosition, { align: 'right' });
-      
-      if (sale.initialPayment > 0) {
-        yPosition += 8;
-        pdf.setFont('helvetica', 'normal');
-        pdf.text('Amount Paid:', 120, yPosition);
-        pdf.text(`₹${sale.initialPayment.toFixed(2)}`, pageWidth - 25, yPosition, { align: 'right' });
-        
-        if (sale.balanceAmount > 0) {
-          yPosition += 8;
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(255, 0, 0);
-          pdf.text('Balance Due:', 120, yPosition);
-          pdf.text(`₹${sale.balanceAmount.toFixed(2)}`, pageWidth - 25, yPosition, { align: 'right' });
-          pdf.setTextColor(0, 0, 0);
-        }
-      }
-      
-      // Payment History
-      if (sale.paymentHistory && sale.paymentHistory.length > 0) {
-        yPosition += 15;
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Payment History:', 15, yPosition);
-        yPosition += 8;
-        
-        pdf.setFont('helvetica', 'normal');
-        sale.paymentHistory.forEach((payment, idx) => {
-          pdf.text(`${idx + 1}. ${new Date(payment.date).toLocaleDateString()} - ${payment.paymentType}`, 20, yPosition);
-          pdf.text(`₹${payment.amount.toFixed(2)}`, pageWidth - 25, yPosition, { align: 'right' });
-          yPosition += 7;
-        });
-      }
-      
-      // Footer
-      yPosition = pdf.internal.pageSize.getHeight() - 20;
-      pdf.setFontSize(9);
-      pdf.text('Thank you for your business!', pageWidth / 2, yPosition, { align: 'center' });
-      
-      pdf.save(`Invoice_${sale.customerName}_${new Date(sale.date).toLocaleDateString().replace(/\//g, '-')}.pdf`);
-      toast.success('Invoice downloaded successfully!');
-    } catch (err) {
-      console.error('Error generating PDF:', err);
-      toast.error('Failed to generate invoice');
+  try {
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const leftMargin = 15;
+    const rightMargin = 15;
+
+    // ===== HEADER SECTION =====
+    let yPos = 15;
+
+    // Left side - Company details
+    pdf.setFontSize(16);
+    pdf.setFont('courier', 'bold');
+    pdf.text('MVR FURNITURE MART', leftMargin, yPos);
+
+    yPos += 8;
+    pdf.setFontSize(10);
+    pdf.setFont('courier', 'normal');
+    pdf.text('Furniture Store & Supplies', leftMargin, yPos);
+
+    yPos += 5;
+    pdf.setFontSize(9);
+    pdf.text('Address: Kakinda, Andhra Pradesh', leftMargin, yPos);
+
+    yPos += 4;
+    pdf.text('Phone: +91 9876543210', leftMargin, yPos);
+
+
+    // Right side - Bill details
+    const rightStartX = pageWidth - rightMargin - 60;
+    yPos = 15;
+
+    pdf.setFontSize(10);
+    pdf.setFont('courier', 'bold');
+    pdf.text('Bill No:', rightStartX, yPos);
+    
+    pdf.setFont('courier', 'normal');
+    const billNo = sale.serialNumber || sale.id.substring(0, 9);
+    pdf.text(billNo, rightStartX + 18, yPos);
+
+    yPos += 7;
+    pdf.setFont('courier', 'bold');
+    pdf.text('Date:', rightStartX, yPos);
+    
+    pdf.setFont('courier', 'normal');
+    const dateStr = new Date(sale.date).toLocaleDateString('en-IN');
+    pdf.text(dateStr, rightStartX + 18, yPos);
+
+    yPos += 7;
+    pdf.setFont('courier', 'bold');
+    pdf.text('Customer:', rightStartX, yPos);
+    
+    pdf.setFont('courier', 'normal');
+    const maxWidth = 45;
+    const splitCustomerName = pdf.splitTextToSize(sale.customerName, maxWidth);
+    pdf.text(splitCustomerName, rightStartX + 18, yPos);
+    
+    // Adjust yPos based on number of lines
+    if (splitCustomerName.length > 1) {
+      yPos += (splitCustomerName.length - 1) * 5;
     }
-  }, [sale]);
 
-  const generatePaymentReceipt = useCallback((payment: PaymentHistory, paymentIndex: number) => {
-    if (!sale) return;
+    yPos += 7;
+    pdf.setFont('courier', 'bold');
+    pdf.text('Payment:', rightStartX, yPos);
+    
+    pdf.setFont('courier', 'normal');
+    pdf.text(sale.paymentType, rightStartX + 18, yPos);
 
-    try {
-      const pdf = new jsPDF();
-      const pageWidth = pdf.internal.pageSize.getWidth();
+    // Separator line
+    yPos = 50;
+    pdf.setLineWidth(1);
+    pdf.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+    // ===== TABLE SECTION =====
+    yPos += 10;
+
+    // Table Headers
+    pdf.setFontSize(10);
+    pdf.setFont('courier', 'bold');
+    
+    pdf.text('#', leftMargin, yPos);
+    pdf.text('Item', leftMargin + 8, yPos);
+    pdf.text('Qty', 95, yPos);
+    pdf.text('Price', 115, yPos);
+    pdf.text('Subtotal', pageWidth - rightMargin - 20, yPos, { align: 'right' });
+
+    yPos += 6;
+    pdf.setLineWidth(1);
+    pdf.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+    // Table Rows
+    yPos += 8;
+    pdf.setFont('courier', 'normal');
+    pdf.setFontSize(10);
+    
+    sale.items.forEach((item, idx) => {
+      // Split long product names into multiple lines
+      const maxWidth = 60;
+      const itemNameLines = pdf.splitTextToSize(item.productName, maxWidth);
       
-      // Header
-      pdf.setFontSize(20);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('MVR FURNITURE MART', pageWidth / 2, 20, { align: 'center' });
+      pdf.text((idx + 1).toString(), leftMargin, yPos);
+      pdf.text(itemNameLines, leftMargin + 8, yPos);
       
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('Quality Furniture for Every Home', pageWidth / 2, 27, { align: 'center' });
+      // Right-align quantity in its column
+      pdf.text(item.quantity.toString(), 105, yPos, { align: 'right' });
       
-      // Line separator
-      pdf.setLineWidth(0.5);
-      pdf.line(15, 32, pageWidth - 15, 32);
+      // Right-align price in its column
+      pdf.text(item.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 145, yPos, { align: 'right' });
       
-      // Receipt title
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('PAYMENT RECEIPT', pageWidth / 2, 42, { align: 'center' });
+      // Right-align subtotal
+      pdf.text(item.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), pageWidth - rightMargin, yPos, { align: 'right' });
       
-      // Receipt info
-      let yPosition = 55;
-      pdf.setFontSize(11);
-      
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Receipt #:', 15, yPosition);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`${sale.id}-${paymentIndex + 1}`, 50, yPosition);
-      
-      yPosition += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Customer:', 15, yPosition);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(sale.customerName, 50, yPosition);
-      
-      yPosition += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Payment Date:', 15, yPosition);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(new Date(payment.date).toLocaleDateString('en-IN'), 50, yPosition);
-      
-      yPosition += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Payment Method:', 15, yPosition);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(payment.paymentType, 50, yPosition);
-      
-      yPosition += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Installment:', 15, yPosition);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`#${paymentIndex + 1} of ${sale.paymentHistory.length}`, 50, yPosition);
-      
-      // Payment box
-      yPosition += 20;
-      pdf.setFillColor(34, 197, 94); // Green color
-      pdf.rect(15, yPosition - 5, pageWidth - 30, 25, 'F');
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('AMOUNT PAID', pageWidth / 2, yPosition + 5, { align: 'center' });
-      pdf.setFontSize(22);
-      pdf.text(`₹${payment.amount.toFixed(2)}`, pageWidth / 2, yPosition + 15, { align: 'center' });
-      pdf.setTextColor(0, 0, 0);
-      
-      // Sale Summary
-      yPosition += 35;
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Sale Summary:', 15, yPosition);
-      
-      yPosition += 10;
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      
-      pdf.text('Total Sale Amount:', 20, yPosition);
-      pdf.text(`₹${sale.totalAmount.toFixed(2)}`, pageWidth - 20, yPosition, { align: 'right' });
-      
-      yPosition += 7;
-      pdf.text('Total Paid to Date:', 20, yPosition);
-      pdf.setTextColor(34, 197, 94);
-      pdf.text(`₹${sale.initialPayment.toFixed(2)}`, pageWidth - 20, yPosition, { align: 'right' });
-      pdf.setTextColor(0, 0, 0);
-      
-      yPosition += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Balance Remaining:', 20, yPosition);
+      // Adjust yPos based on number of lines in item name
+      yPos += Math.max(8, itemNameLines.length * 5 + 3);
+    });
+
+    // Bottom line
+    pdf.setLineWidth(1);
+    pdf.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+    yPos += 10;
+
+    // Summary section
+    pdf.setFont('courier', 'bold');
+    pdf.setFontSize(11);
+    
+    const summaryLabelX = 110;
+    const summaryValueX = pageWidth - rightMargin - 20;
+
+    pdf.text('Total:', summaryLabelX, yPos);
+    pdf.text(sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), summaryValueX, yPos, { align: 'right' });
+
+    if (sale.initialPayment > 0) {
+      yPos += 8;
+      pdf.text('Amount Paid:', summaryLabelX, yPos);
+      pdf.text(sale.initialPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), summaryValueX, yPos, { align: 'right' });
+
       if (sale.balanceAmount > 0) {
-        pdf.setTextColor(239, 68, 68);
-      } else {
-        pdf.setTextColor(34, 197, 94);
+        yPos += 8;
+        pdf.setTextColor(200, 0, 0);
+        pdf.text('Balance Due:', summaryLabelX, yPos);
+        pdf.text(sale.balanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), summaryValueX, yPos, { align: 'right' });
+        pdf.setTextColor(0, 0, 0);
       }
-      pdf.text(`₹${sale.balanceAmount.toFixed(2)}`, pageWidth - 20, yPosition, { align: 'right' });
-      pdf.setTextColor(0, 0, 0);
-      
-      // Payment History
-      if (sale.paymentHistory.length > 1) {
-        yPosition += 15;
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Payment History:', 15, yPosition);
-        yPosition += 8;
-        
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'normal');
-        sale.paymentHistory.forEach((p, idx) => {
-          const isCurrentPayment = idx === paymentIndex;
-          if (isCurrentPayment) {
-            pdf.setFillColor(254, 243, 199); // Yellow highlight
-            pdf.rect(15, yPosition - 4, pageWidth - 30, 6, 'F');
-            pdf.setFont('helvetica', 'bold');
-          }
-          
-          pdf.text(`${idx + 1}. ${new Date(p.date).toLocaleDateString('en-IN')} - ${p.paymentType}`, 20, yPosition);
-          pdf.text(`₹${p.amount.toFixed(2)}`, pageWidth - 20, yPosition, { align: 'right' });
-          yPosition += 6;
-          
-          if (isCurrentPayment) {
-            pdf.setFont('helvetica', 'normal');
-          }
-        });
-      }
-      
-      // Footer
-      yPosition = pdf.internal.pageSize.getHeight() - 30;
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Thank you for your payment!', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 7;
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('This is a computer-generated receipt and does not require a signature.', pageWidth / 2, yPosition, { align: 'center' });
-      
-      pdf.save(`Payment_Receipt_${sale.customerName}_${paymentIndex + 1}_${new Date(payment.date).toLocaleDateString().replace(/\//g, '-')}.pdf`);
-      toast.success('Payment receipt downloaded successfully!');
-    } catch (err) {
-      console.error('Error generating payment receipt:', err);
-      toast.error('Failed to generate payment receipt');
     }
-  }, [sale]);
+
+    // Footer
+    yPos = pageHeight - 25;
+    pdf.setFontSize(9);
+    pdf.setFont('courier', 'normal');
+    pdf.text('Thank you for your business! Please visit again.', pageWidth / 2, yPos, { align: 'center' });
+
+    yPos += 5;
+    pdf.setFontSize(8);
+    pdf.text('This is a computer-generated invoice. No signature required.', pageWidth / 2, yPos, { align: 'center' });
+
+    const fileName = `Invoice_${sale.customerName.replace(/\s+/g, '_')}_${new Date(sale.date).toLocaleDateString().replace(/\//g, '-')}.pdf`;
+    pdf.save(fileName);
+    
+    toast.success('Invoice downloaded successfully!');
+  } catch (err) {
+    console.error('Error generating PDF:', err);
+    toast.error('Failed to generate invoice');
+  }
+}, [sale]);
+
+const generatePaymentReceipt = useCallback((payment: PaymentHistory, paymentIndex: number) => {
+  if (!sale) return;
+
+  try {
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const leftMargin = 15;
+    const rightMargin = 15;
+    const centerX = pageWidth / 2;
+
+    let yPos = 15;
+
+    // ===== HEADER SECTION =====
+    pdf.setFontSize(18);
+    pdf.setFont('courier', 'bold');
+    pdf.text('MVR FURNITURE MART', centerX, yPos, { align: 'center' });
+
+    yPos += 8;
+    pdf.setFontSize(10);
+    pdf.setFont('courier', 'normal');
+    pdf.text('Furniture Store & Supplies', centerX, yPos, { align: 'center' });
+
+    yPos += 5;
+    pdf.setFontSize(9);
+    pdf.text('Kakinda, Andhra Pradesh | +91 9876543210', centerX, yPos, { align: 'center' });
+
+    yPos += 10;
+    pdf.setLineWidth(1);
+    pdf.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+    // ===== TITLE SECTION =====
+    yPos += 8;
+    pdf.setFontSize(14);
+    pdf.setFont('courier', 'bold');
+    pdf.text('PAYMENT RECEIPT', centerX, yPos, { align: 'center' });
+
+    yPos += 10;
+    pdf.setLineWidth(0.5);
+    pdf.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+    // ===== RECEIPT DETAILS SECTION =====
+    yPos += 10;
+    pdf.setFontSize(10);
+    pdf.setFont('courier', 'bold');
+
+    const labelX = leftMargin + 5;
+    const valueX = pageWidth - rightMargin - 60;
+
+    pdf.text('Receipt #:', labelX, yPos);
+    pdf.setFont('courier', 'normal');
+    pdf.text(`${sale.id}-${paymentIndex + 1}`, valueX, yPos);
+
+    yPos += 7;
+    pdf.setFont('courier', 'bold');
+    pdf.text('Date:', labelX, yPos);
+    pdf.setFont('courier', 'normal');
+    pdf.text(new Date(payment.date).toLocaleDateString('en-IN'), valueX, yPos);
+
+    yPos += 7;
+    pdf.setFont('courier', 'bold');
+    pdf.text('Customer:', labelX, yPos);
+    pdf.setFont('courier', 'normal');
+    const maxWidth = 50;
+    const splitCustomerName = pdf.splitTextToSize(sale.customerName, maxWidth);
+    pdf.text(splitCustomerName, valueX, yPos);
+    if (splitCustomerName.length > 1) {
+      yPos += (splitCustomerName.length - 1) * 5;
+    }
+
+    yPos += 7;
+    pdf.setFont('courier', 'bold');
+    pdf.text('Payment Method:', labelX, yPos);
+    pdf.setFont('courier', 'normal');
+    pdf.text(payment.paymentType, valueX, yPos);
+
+    yPos += 7;
+    pdf.setFont('courier', 'bold');
+    pdf.text('Installment:', labelX, yPos);
+    pdf.setFont('courier', 'normal');
+    pdf.text(`#${paymentIndex + 1} of ${sale.paymentHistory.length}`, valueX, yPos);
+
+    // ===== AMOUNT PAID BOX =====
+    yPos += 12;
+    pdf.setLineWidth(1);
+    pdf.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+    yPos += 8;
+    pdf.setFontSize(10);
+    pdf.setFont('courier', 'bold');
+    pdf.text('AMOUNT PAID:', leftMargin + 5, yPos);
+    
+    const amountText = '₹ ' + payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    pdf.text(amountText, pageWidth / 2 + 50, yPos, { align: 'right' });
+
+    yPos += 8;
+    pdf.setLineWidth(1);
+    pdf.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+    // ===== SALE SUMMARY SECTION =====
+    yPos += 10;
+    pdf.setFontSize(10);
+    pdf.setFont('courier', 'bold');
+    pdf.text('SALE SUMMARY', leftMargin + 5, yPos);
+
+    yPos += 8;
+    pdf.setFontSize(9);
+    pdf.setFont('courier', 'normal');
+
+    const summaryLabelX = leftMargin + 10;
+    const summaryValueX = pageWidth - rightMargin - 5;
+
+    pdf.setFont('courier', 'bold');
+    pdf.text('Total Sale Amount:', summaryLabelX, yPos);
+    pdf.setFont('courier', 'normal');
+    pdf.text(sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), summaryValueX, yPos, { align: 'right' });
+
+    yPos += 7;
+    pdf.setFont('courier', 'bold');
+    pdf.text('Total Paid to Date:', summaryLabelX, yPos);
+    pdf.setFont('courier', 'normal');
+    pdf.setTextColor(0, 100, 0);
+    pdf.text(sale.initialPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), summaryValueX, yPos, { align: 'right' });
+    pdf.setTextColor(0, 0, 0);
+
+    yPos += 7;
+    pdf.setFont('courier', 'bold');
+    pdf.text('Balance Remaining:', summaryLabelX, yPos);
+    pdf.setFont('courier', 'normal');
+    if (sale.balanceAmount > 0) {
+      pdf.setTextColor(200, 0, 0);
+    } else {
+      pdf.setTextColor(0, 100, 0);
+    }
+    pdf.text(sale.balanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), summaryValueX, yPos, { align: 'right' });
+    pdf.setTextColor(0, 0, 0);
+
+    // ===== PAYMENT HISTORY SECTION =====
+    if (sale.paymentHistory.length > 1) {
+      yPos += 12;
+      pdf.setLineWidth(0.5);
+      pdf.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
+
+      yPos += 8;
+      pdf.setFontSize(10);
+      pdf.setFont('courier', 'bold');
+      pdf.text('PAYMENT HISTORY', leftMargin + 5, yPos);
+
+      yPos += 8;
+      pdf.setFontSize(8);
+      
+      // Table headers
+      pdf.setFont('courier', 'bold');
+      pdf.text('#', leftMargin + 10, yPos);
+      pdf.text('Date', leftMargin + 20, yPos);
+      pdf.text('Method', leftMargin + 50, yPos);
+      pdf.text('Amount', summaryValueX, yPos, { align: 'right' });
+
+      yPos += 6;
+      pdf.setLineWidth(0.3);
+      pdf.line(leftMargin + 5, yPos, pageWidth - rightMargin - 5, yPos);
+
+      yPos += 6;
+      pdf.setFont('courier', 'normal');
+
+      sale.paymentHistory.forEach((p, idx) => {
+        const isCurrentPayment = idx === paymentIndex;
+        
+        if (isCurrentPayment) {
+          pdf.setFillColor(200, 200, 200);
+          pdf.rect(leftMargin + 3, yPos - 4, pageWidth - rightMargin - 6, 5.5, 'F');
+          pdf.setFont('courier', 'bold');
+        }
+
+        const paymentNum = (idx + 1).toString();
+        const dateStr = new Date(p.date).toLocaleDateString('en-IN');
+        const amountStr = p.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        pdf.text(paymentNum, leftMargin + 10, yPos);
+        pdf.text(dateStr, leftMargin + 20, yPos);
+        pdf.text(p.paymentType, leftMargin + 50, yPos);
+        pdf.text(amountStr, summaryValueX, yPos, { align: 'right' });
+
+        yPos += 6;
+
+        if (isCurrentPayment) {
+          pdf.setFont('courier', 'normal');
+        }
+      });
+    }
+
+    // ===== FOOTER =====
+    yPos = pageHeight - 20;
+    pdf.setFontSize(9);
+    pdf.setFont('courier', 'normal');
+    pdf.text('Thank you for your payment!', centerX, yPos, { align: 'center' });
+
+    yPos += 5;
+    pdf.setFontSize(8);
+    pdf.text('This is a computer-generated receipt. No signature required.', centerX, yPos, { align: 'center' });
+
+    const fileName = `Payment_Receipt_${sale.customerName.replace(/\s+/g, '_')}_${paymentIndex + 1}_${new Date(payment.date).toLocaleDateString().replace(/\//g, '-')}.pdf`;
+    pdf.save(fileName);
+    
+    toast.success('Payment receipt downloaded successfully!');
+  } catch (err) {
+    console.error('Error generating payment receipt:', err);
+    toast.error('Failed to generate payment receipt');
+  }
+}, [sale]);
 
   if (loading) {
     return (

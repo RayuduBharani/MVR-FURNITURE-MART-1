@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { cache } from "react";
 
 export type ActionResponse<T = unknown> = {
   success: boolean;
@@ -40,7 +41,7 @@ function getFinancialYearRange(financialYear: number): {
 }
 
 // Get current financial year
-export async function getCurrentFinancialYear(): Promise<ActionResponse<number>> {
+export const getCurrentFinancialYear = cache(async function(): Promise<ActionResponse<number>> {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
@@ -52,10 +53,10 @@ export async function getCurrentFinancialYear(): Promise<ActionResponse<number>>
     success: true,
     data: fy,
   };
-}
+});
 
 // GET FINANCIAL YEAR SUMMARY
-export async function getFinancialYearSummary(
+export const getFinancialYearSummary = cache(async function(
   financialYear: number
 ): Promise<ActionResponse<FinancialYearSummary>> {
   try {
@@ -138,10 +139,10 @@ export async function getFinancialYearSummary(
       error: error instanceof Error ? error.message : "Failed to fetch financial year summary",
     };
   }
-}
+});
 
 // GET AVAILABLE FINANCIAL YEARS
-export async function getAvailableFinancialYears(): Promise<ActionResponse<number[]>> {
+export const getAvailableFinancialYears = cache(async function(): Promise<ActionResponse<number[]>> {
   try {
     const years = await prisma.expenditure.findMany({
       distinct: ['year'],
@@ -171,4 +172,4 @@ export async function getAvailableFinancialYears(): Promise<ActionResponse<numbe
       error: error instanceof Error ? error.message : "Failed to fetch available financial years",
     };
   }
-}
+});

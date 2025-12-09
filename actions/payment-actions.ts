@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cache } from "react";
 
 export type ActionResponse<T = unknown> = {
   success: boolean;
@@ -105,7 +107,7 @@ export async function addPayment(formData: {
 }
 
 // GET PAYMENTS FOR A PURCHASE
-export async function getPaymentsByPurchase(
+export const getPaymentsByPurchase = cache(async function(
   purchaseId: string
 ): Promise<ActionResponse<PaymentData[]>> {
   try {
@@ -123,10 +125,10 @@ export async function getPaymentsByPurchase(
     const errorMessage = error instanceof Error ? error.message : "Failed to get payments";
     return { success: false, error: errorMessage };
   }
-}
+});
 
 // GET ALL PAYMENTS FOR A PRODUCT
-export async function getPaymentsByProduct(
+export const getPaymentsByProduct = cache(async function(
   productId: string
 ): Promise<ActionResponse<PaymentData[]>> {
   try {
@@ -144,7 +146,7 @@ export async function getPaymentsByProduct(
     const errorMessage = error instanceof Error ? error.message : "Failed to get payments";
     return { success: false, error: errorMessage };
   }
-}
+});
 
 // DELETE PAYMENT
 export async function deletePayment(

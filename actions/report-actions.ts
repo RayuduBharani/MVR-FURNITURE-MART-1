@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { cache } from "react";
 
 export type ActionResponse<T = unknown> = {
   success: boolean;
@@ -89,7 +90,7 @@ const MONTH_NAMES = [
 ];
 
 // GET DAILY REPORT
-export async function getDailyReport(
+export const getDailyReport = cache(async function(
   date: Date
 ): Promise<ActionResponse<DailyReport>> {
   try {
@@ -200,13 +201,13 @@ export async function getDailyReport(
       error: error instanceof Error ? error.message : "Failed to fetch daily report",
     };
   }
-}
+});
 
 // GET MONTHLY REPORT
-export async function getMonthlyReport(
+export const getMonthlyReport = cache(async (
   year: number,
   month: number
-): Promise<ActionResponse<MonthlyReport>> {
+): Promise<ActionResponse<MonthlyReport>> => {
   try {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
@@ -312,12 +313,12 @@ export async function getMonthlyReport(
       error: error instanceof Error ? error.message : "Failed to fetch monthly report",
     };
   }
-}
+});
 
 // GET YEARLY REPORT
-export async function getYearlyReport(
+export const getYearlyReport = cache(async (
   year: number
-): Promise<ActionResponse<YearlyReport>> {
+): Promise<ActionResponse<YearlyReport>> => {
   try {
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
@@ -418,12 +419,12 @@ export async function getYearlyReport(
       error: error instanceof Error ? error.message : "Failed to fetch yearly report",
     };
   }
-}
+});
 
 // GET FINANCIAL YEAR REPORT (April to March)
-export async function getFinancialYearReport(
+export const getFinancialYearReport = cache(async (
   financialYear: number
-): Promise<ActionResponse<FinancialYearReport>> {
+): Promise<ActionResponse<FinancialYearReport>> => {
   try {
     const startYear = financialYear;
     const endYear = financialYear + 1;
@@ -541,4 +542,4 @@ export async function getFinancialYearReport(
       error: error instanceof Error ? error.message : "Failed to fetch financial year report",
     };
   }
-}
+});
