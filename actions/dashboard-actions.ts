@@ -123,7 +123,7 @@ export async function getRecentActivities(): Promise<ActionResponse<RecentActivi
       },
     });
 
-    recentSales.forEach((sale) => {
+    recentSales.forEach((sale: { id: string; customerName: string; totalAmount: number; date: Date }) => {
       activities.push({
         type: "sale",
         message: `New sale to ${sale.customerName} - ₹${sale.totalAmount.toLocaleString()}`,
@@ -143,7 +143,7 @@ export async function getRecentActivities(): Promise<ActionResponse<RecentActivi
       },
     });
 
-    recentExpenses.forEach((expense) => {
+    recentExpenses.forEach((expense: { category: string; amount: number; date: Date }) => {
       activities.push({
         type: "expense",
         message: `Expense added: ${expense.category} - ₹${expense.amount.toLocaleString()}`,
@@ -167,7 +167,7 @@ export async function getRecentActivities(): Promise<ActionResponse<RecentActivi
       },
     });
 
-    lowStockProducts.forEach((product) => {
+    lowStockProducts.forEach((product: { name: string; stock: number }) => {
       activities.push({
         type: "stock",
         message: `Low stock alert: ${product.name} (${product.stock} left)`,
