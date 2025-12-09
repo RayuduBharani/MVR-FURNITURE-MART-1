@@ -32,7 +32,7 @@ interface CartItem {
 }
 
 interface Product {
-  _id: string;
+  id: string;
   name: string;
   sellingPrice: number;
   stock: number;
@@ -45,7 +45,7 @@ interface PaymentHistory {
 }
 
 interface Sale {
-  _id: string;
+  id: string;
   date: string;
   customerName: string;
   paymentType: string;
@@ -117,7 +117,7 @@ export default function SalesPage() {
         if (result.success && result.data) {
           // Convert API response format to Product interface
           const products = result.data.map((p) => ({
-            _id: p.id,
+            id: p.id,
             name: p.name,
             stock: p.stock,
             sellingPrice: p.sellingPrice,
@@ -149,7 +149,7 @@ export default function SalesPage() {
 
     const subtotal = quantity * sellingPrice;
     const newItem: CartItem = {
-      productId: selectedProduct._id,
+      productId: selectedProduct.id,
       productName: selectedProduct.name,
       quantity,
       price: sellingPrice,
@@ -157,7 +157,7 @@ export default function SalesPage() {
     };
 
     // Check if product already in cart
-    const existingIndex = cart.findIndex((item) => item.productId === selectedProduct._id);
+    const existingIndex = cart.findIndex((item) => item.productId === selectedProduct.id);
     if (existingIndex >= 0) {
       const updatedCart = [...cart];
       updatedCart[existingIndex].quantity += quantity;
@@ -253,7 +253,7 @@ export default function SalesPage() {
 
       if (result.success && result.data) {
         const saleData = result.data as Sale;
-        toast.success(`Bill created successfully! Invoice #${saleData._id.substring(saleData._id.length - 6)}`);
+        toast.success(`Bill created successfully! Invoice #${saleData.id.substring(saleData.id.length - 6)}`);
         
         // Determine where to navigate based on payment status
         const isPending = saleData.status === 'PENDING' || saleData.balanceAmount > 0;
@@ -339,7 +339,7 @@ export default function SalesPage() {
     setPaymentLoading(true);
 
     try {
-      const result = await makeAdditionalPayment(selectedSaleForPayment._id, amount);
+      const result = await makeAdditionalPayment(selectedSaleForPayment.id, amount);
       
       if (result.success) {
         toast.success(`Payment of ₹${amount.toFixed(2)} recorded successfully!`);
@@ -420,7 +420,7 @@ export default function SalesPage() {
   // Generate and download invoice PDF
   const generateAndDownloadInvoice = useCallback((sale: Sale) => {
     try {
-      if (!sale || !sale._id || !sale.items) {
+      if (!sale || !sale.id || !sale.items) {
         console.error('Invalid sale data:', sale);
         toast.error('Invalid sale data for PDF generation');
         return;
@@ -451,7 +451,7 @@ export default function SalesPage() {
 
       // Bill details on right side
       const saleDate = typeof sale.date === 'string' ? new Date(sale.date) : sale.date;
-      const billNo = sale._id.substring(sale._id.length - 6); // Last 6 chars of ID
+      const billNo = sale.id.substring(sale.id.length - 6); // Last 6 chars of ID
       
       pdf.setFontSize(10);
       pdf.text(`Bill No: ${billNo}`, pageWidth - 60, 25, { align: 'left' });

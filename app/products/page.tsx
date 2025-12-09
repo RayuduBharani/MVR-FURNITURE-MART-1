@@ -116,7 +116,7 @@ export default function ProductsPage() {
     setSubmitting(true);
     setError("");
 
-    const result = await updateProduct(editingProduct._id, {
+    const result = await updateProduct(editingProduct.id, {
       name: editForm.name,
       category: editForm.category,
       purchasePrice: parseFloat(editForm.purchasePrice) || 0,
@@ -500,7 +500,7 @@ export default function ProductsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {paginatedProducts.map((product) => (
-                  <Card key={product._id} className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
+                  <Card key={product.id} className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
                     <CardContent className="pt-4">
                       <h3 className="font-semibold text-lg mb-2 truncate text-foreground">{product.name}</h3>
                       {product.category && (
@@ -541,7 +541,7 @@ export default function ProductsPage() {
                       </div>
                     </CardContent>
                     <div className="px-4 pb-4 pt-2 border-t bg-muted/30 flex gap-2">
-                      <Link href={`/stock/product/${product._id}`} className="flex-1">
+                      <Link href={`/stock/product/${product.id}`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full">
                           View
                         </Button>

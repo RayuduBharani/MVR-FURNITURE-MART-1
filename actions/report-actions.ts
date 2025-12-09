@@ -1,9 +1,6 @@
 "use server";
 
-import connectDB from "@/lib/mongodb";
-import Sale from "@/models/Sale";
-import Expenditure from "@/models/Expenditure";
-import Purchase from "@/models/Purchase";
+import prisma from "@/lib/prisma";
 
 export type ActionResponse<T = unknown> = {
   success: boolean;
@@ -23,7 +20,7 @@ export type DailyReport = {
   expendituresCount: number;
   purchasesCount: number;
   paidBillsToday: Array<{
-    _id: string;
+    id: string;
     customerName: string;
     totalAmount: number;
     paidAmount: number;
@@ -96,71 +93,88 @@ export async function getDailyReport(
   date: Date
 ): Promise<ActionResponse<DailyReport>> {
   try {
-    await connectDB();
-
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+
     // Fetch sales for the day
-    const sales = await Sale.find({
-      date: { $gte: startOfDay, $lte: endOfDay },
+    const sales = await prisma.sale.findMany({
+      where: {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
     });
 
     // Fetch sales with payments made today
-    const paidBillsToday = await Sale.find({
-      'paymentHistory.date': { $gte: startOfDay, $lte: endOfDay },
-    }).lean();
+    const paidBillsToday = await prisma.sale.findMany({
+      where: {
+        paymentHistory: {
+          some: {
+            date: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        },
+      },
+      include: {
+        paymentHistory: {
+          where: {
+            date: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        },
+      },
+    });
 
-    // Filter and map paid bills with payments made today
     const paidBillsList = paidBillsToday.map(sale => {
-      const paymentsToday = sale.paymentHistory?.filter((payment: { date: Date | string; amount: number; paymentType: string }) => {
-        const paymentDate = new Date(payment.date);
-        return paymentDate >= startOfDay && paymentDate <= endOfDay;
-      }) || [];
-      
-      const paidAmountToday = paymentsToday.reduce((sum: number, p: { date: Date | string; amount: number; paymentType: string }) => sum + p.amount, 0);
+      const paidAmountToday = sale.paymentHistory.reduce((sum, p) => sum + p.amount, 0);
       
       return {
-        _id: sale._id.toString(),
+        id: sale.id,
         customerName: sale.customerName,
         totalAmount: sale.totalAmount,
         paidAmount: paidAmountToday,
-        paymentType: paymentsToday[0]?.paymentType || sale.paymentType,
+        paymentType: sale.paymentHistory[0]?.paymentType || sale.paymentType,
         date: sale.date.toISOString(),
       };
     });
 
     // Fetch expenditures for the day
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-
-    const expenditures = await Expenditure.find({
-      year: year,
-      month: month,
-      $expr: {
-        $eq: [{ $dayOfMonth: "$date" }, day],
+    const expenditures = await prisma.expenditure.findMany({
+      where: {
+        year: year,
+        month: month,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
       },
     });
 
     // Fetch purchases for the day
-    const purchases = await Purchase.find({
-      date: { $gte: startOfDay, $lte: endOfDay },
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
     });
 
     const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
     const totalExpenditures = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
-    const totalPurchases = purchases.reduce((sum, purchase) => {
-      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-      return sum + paid;
-    }, 0);
-    const remainingSupplierAmount = purchases.reduce((sum, purchase) => {
-      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-      return sum + (purchase.total - paid);
-    }, 0);
+    const totalPurchases = purchases.reduce((sum, purchase) => sum + purchase.paidAmount, 0);
+    const remainingSupplierAmount = purchases.reduce((sum, purchase) => sum + (purchase.total - purchase.paidAmount), 0);
     const remainingCustomerAmount = sales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
     return {
@@ -194,37 +208,41 @@ export async function getMonthlyReport(
   month: number
 ): Promise<ActionResponse<MonthlyReport>> {
   try {
-    await connectDB();
-
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
     // Fetch sales for the month
-    const sales = await Sale.find({
-      date: { $gte: startDate, $lte: endDate },
+    const sales = await prisma.sale.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
     });
 
     // Fetch expenditures for the month
-    const expenditures = await Expenditure.find({
-      year: year,
-      month: month,
+    const expenditures = await prisma.expenditure.findMany({
+      where: {
+        year: year,
+        month: month,
+      },
     });
 
     // Fetch purchases for the month
-    const purchases = await Purchase.find({
-      date: { $gte: startDate, $lte: endDate },
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
     });
 
     const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
     const totalExpenditures = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
-    const totalPurchases = purchases.reduce((sum, purchase) => {
-      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-      return sum + paid;
-    }, 0);
-    const remainingSupplierAmount = purchases.reduce((sum, purchase) => {
-      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-      return sum + (purchase.total - paid);
-    }, 0);
+    const totalPurchases = purchases.reduce((sum, purchase) => sum + purchase.paidAmount, 0);
+    const remainingSupplierAmount = purchases.reduce((sum, purchase) => sum + (purchase.total - purchase.paidAmount), 0);
     const remainingCustomerAmount = sales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
     // Daily breakdown
@@ -248,14 +266,8 @@ export async function getMonthlyReport(
 
       const daySalesTotal = daySales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
       const dayExpTotal = dayExpenditures.reduce((sum, exp) => sum + exp.amount, 0);
-      const dayPurchasesTotal = dayPurchases.reduce((sum, purchase) => {
-        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-        return sum + paid;
-      }, 0);
-      const dayRemainingSupplier = dayPurchases.reduce((sum, purchase) => {
-        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-        return sum + (purchase.total - paid);
-      }, 0);
+      const dayPurchasesTotal = dayPurchases.reduce((sum, purchase) => sum + purchase.paidAmount, 0);
+      const dayRemainingSupplier = dayPurchases.reduce((sum, purchase) => sum + (purchase.total - purchase.paidAmount), 0);
       const dayRemainingCustomer = daySales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
       if (daySalesTotal > 0 || dayExpTotal > 0 || dayPurchasesTotal > 0) {
@@ -307,36 +319,40 @@ export async function getYearlyReport(
   year: number
 ): Promise<ActionResponse<YearlyReport>> {
   try {
-    await connectDB();
-
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
 
     // Fetch all sales for the year
-    const sales = await Sale.find({
-      date: { $gte: startDate, $lte: endDate },
+    const sales = await prisma.sale.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
     });
 
     // Fetch all expenditures for the year
-    const expenditures = await Expenditure.find({
-      year: year,
+    const expenditures = await prisma.expenditure.findMany({
+      where: {
+        year: year,
+      },
     });
 
     // Fetch all purchases for the year
-    const purchases = await Purchase.find({
-      date: { $gte: startDate, $lte: endDate },
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
     });
 
     const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
     const totalExpenditures = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
-    const totalPurchases = purchases.reduce((sum, purchase) => {
-      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-      return sum + paid;
-    }, 0);
-    const remainingSupplierAmount = purchases.reduce((sum, purchase) => {
-      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-      return sum + (purchase.total - paid);
-    }, 0);
+    const totalPurchases = purchases.reduce((sum, purchase) => sum + purchase.paidAmount, 0);
+    const remainingSupplierAmount = purchases.reduce((sum, purchase) => sum + (purchase.total - purchase.paidAmount), 0);
     const remainingCustomerAmount = sales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
     // Monthly breakdown
@@ -356,14 +372,8 @@ export async function getYearlyReport(
 
       const monthSalesTotal = monthSales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
       const monthExpTotal = monthExpenditures.reduce((sum, exp) => sum + exp.amount, 0);
-      const monthPurchasesTotal = monthPurchases.reduce((sum, purchase) => {
-        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-        return sum + paid;
-      }, 0);
-      const monthRemainingSupplier = monthPurchases.reduce((sum, purchase) => {
-        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-        return sum + (purchase.total - paid);
-      }, 0);
+      const monthPurchasesTotal = monthPurchases.reduce((sum, purchase) => sum + purchase.paidAmount, 0);
+      const monthRemainingSupplier = monthPurchases.reduce((sum, purchase) => sum + (purchase.total - purchase.paidAmount), 0);
       const monthRemainingCustomer = monthSales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
       if (monthSalesTotal > 0 || monthExpTotal > 0 || monthPurchasesTotal > 0) {
@@ -415,8 +425,6 @@ export async function getFinancialYearReport(
   financialYear: number
 ): Promise<ActionResponse<FinancialYearReport>> {
   try {
-    await connectDB();
-
     const startYear = financialYear;
     const endYear = financialYear + 1;
 
@@ -425,33 +433,39 @@ export async function getFinancialYearReport(
     const endDate = new Date(endYear, 2, 31, 23, 59, 59, 999); // March 31
 
     // Fetch sales
-    const sales = await Sale.find({
-      date: { $gte: startDate, $lte: endDate },
+    const sales = await prisma.sale.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
     });
 
     // Fetch expenditures
-    const expenditures = await Expenditure.find({
-      $or: [
-        { year: startYear, month: { $gte: 4, $lte: 12 } },
-        { year: endYear, month: { $gte: 1, $lte: 3 } },
-      ],
+    const expenditures = await prisma.expenditure.findMany({
+      where: {
+        OR: [
+          { year: startYear, month: { gte: 4, lte: 12 } },
+          { year: endYear, month: { gte: 1, lte: 3 } },
+        ],
+      },
     });
 
     // Fetch purchases
-    const purchases = await Purchase.find({
-      date: { $gte: startDate, $lte: endDate },
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
     });
 
     const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
     const totalExpenditures = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
-    const totalPurchases = purchases.reduce((sum, purchase) => {
-      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-      return sum + paid;
-    }, 0);
-    const remainingSupplierAmount = purchases.reduce((sum, purchase) => {
-      const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-      return sum + (purchase.total - paid);
-    }, 0);
+    const totalPurchases = purchases.reduce((sum, purchase) => sum + purchase.paidAmount, 0);
+    const remainingSupplierAmount = purchases.reduce((sum, purchase) => sum + (purchase.total - purchase.paidAmount), 0);
     const remainingCustomerAmount = sales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
     // Monthly breakdown (April to March)
@@ -487,14 +501,8 @@ export async function getFinancialYearReport(
 
       const monthSalesTotal = monthSales.reduce((sum, sale) => sum + (sale.totalAmount - sale.balanceAmount), 0);
       const monthExpTotal = monthExpenditures.reduce((sum, exp) => sum + exp.amount, 0);
-      const monthPurchasesTotal = monthPurchases.reduce((sum, purchase) => {
-        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-        return sum + paid;
-      }, 0);
-      const monthRemainingSupplier = monthPurchases.reduce((sum, purchase) => {
-        const paid = purchase.paidAmount || (purchase.status === 'PAID' ? purchase.total : purchase.initialPayment || 0);
-        return sum + (purchase.total - paid);
-      }, 0);
+      const monthPurchasesTotal = monthPurchases.reduce((sum, purchase) => sum + purchase.paidAmount, 0);
+      const monthRemainingSupplier = monthPurchases.reduce((sum, purchase) => sum + (purchase.total - purchase.paidAmount), 0);
       const monthRemainingCustomer = monthSales.reduce((sum, sale) => sum + sale.balanceAmount, 0);
 
       monthlyBreakdown.push({

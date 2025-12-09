@@ -12,7 +12,7 @@ interface PaymentHistory {
 }
 
 interface Sale {
-  _id: string;
+  id: string;
   date: string;
   customerName: string;
   paymentType: string;
@@ -53,11 +53,11 @@ export default function SalesList({
         
         return (
           <Card 
-            key={sale._id} 
+            key={sale.id} 
             className="p-4 hover:shadow-md transition-shadow"
           >
             <button
-              onClick={() => onToggleExpand(sale._id)}
+              onClick={() => onToggleExpand(sale.id)}
               className="w-full text-left"
             >
               <div className="flex justify-between items-start">
@@ -134,7 +134,7 @@ export default function SalesList({
             <Button
               onClick={(e) => {
                 e.stopPropagation();
-                window.location.href = `/sales/${sale._id}`;
+                window.location.href = `/sales/${sale.id}`;
               }}
               size="sm"
               variant="outline"
@@ -145,7 +145,7 @@ export default function SalesList({
           </div>
 
           {/* Expanded Details */}
-          {expandedSale === sale._id && (
+          {expandedSale === sale.id && (
             <div className="mt-3 pt-3 border-t space-y-3">
               <div className="space-y-1">
                 {sale.items.map((item, idx) => (
@@ -220,7 +220,7 @@ export default function SalesList({
                   Invoice
                 </Button>
                 <Button
-                  onClick={() => window.location.href = `/sales/${sale._id}`}
+                  onClick={() => window.location.href = `/sales/${sale.id}`}
                   size="sm"
                   variant="outline"
                   className="flex-1"

@@ -12,7 +12,7 @@ interface PaymentHistory {
 }
 
 interface Sale {
-  _id: string;
+  id: string;
   date: string;
   customerName: string;
   paymentType: string;

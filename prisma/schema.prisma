@@ -1,0 +1,144 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Product Model
+model Product {
+  id            String     @id @default(cuid())
+  name          String     @unique
+  category      String     @default("")
+  purchasePrice Float      @default(0)
+  sellingPrice  Float      @default(0)
+  stock         Int        @default(0)
+  supplierName  String     @default("")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  purchases     Purchase[]
+  payments      Payment[]
+  saleItems     SaleItem[]
+
+  @@index([name])
+}
+
+// Purchase Model
+model Purchase {
+  id             String   @id @default(cuid())
+  productId      String
+  quantity       Int
+  pricePerUnit   Float
+  total          Float
+  supplierName   String
+  status         String   @default("PAID") // "PAID" or "PENDING"
+  initialPayment Float    @default(0)
+  paidAmount     Float    @default(0)
+  date           DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  payments       Payment[]
+
+  @@index([productId])
+  @@index([status])
+  @@index([date])
+}
+
+// Payment Model
+model Payment {
+  id            String   @id @default(cuid())
+  purchaseId    String
+  productId     String
+  amount        Float
+  paymentDate   DateTime @default(now())
+  paymentMethod String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  purchase      Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@index([paymentDate])
+}
+
+// Expenditure Model
+model Expenditure {
+  id        String   @id @default(cuid())
+  category  String
+  amount    Float
+  notes     String   @default("")
+  date      DateTime @default(now())
+  year      Int
+  month     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([year, month])
+  @@index([date])
+}
+
+// Sale Model
+model Sale {
+  id             String            @id @default(cuid())
+  date           DateTime          @default(now())
+  customerName   String            @default("Walk-in")
+  paymentType    String            // "CASH", "UPI", "CARD", "OTHER"
+  status         String            @default("PAID") // "PAID" or "PENDING"
+  totalAmount    Float
+  initialPayment Float             @default(0)
+  balanceAmount  Float             @default(0)
+  serialNumber   String            @default("")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  
+  items          SaleItem[]
+  paymentHistory SalePaymentHistory[]
+
+  @@index([date])
+  @@index([customerName])
+  @@index([status])
+  @@index([serialNumber])
+}
+
+// Sale Item Model (normalized from embedded array)
+model SaleItem {
+  id          String   @id @default(cuid())
+  saleId      String
+  productId   String
+  productName String
+  quantity    Int
+  price       Float
+  subtotal    Float
+  createdAt   DateTime @default(now())
+  
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// Sale Payment History Model (normalized from embedded array)
+model SalePaymentHistory {
+  id          String   @id @default(cuid())
+  saleId      String
+  date        DateTime
+  amount      Float
+  paymentType String
+  createdAt   DateTime @default(now())
+  
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([date])
+}

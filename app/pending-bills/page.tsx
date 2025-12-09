@@ -531,7 +531,7 @@ export default function PendingBillsPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredPurchases.map((purchase) => (
-                      <TableRow key={purchase._id}>
+                      <TableRow key={purchase.id}>
                         <TableCell className="font-medium">
                           {new Date(purchase.date).toLocaleDateString("en-IN", {
                             day: "2-digit",
@@ -566,7 +566,7 @@ export default function PendingBillsPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleMakePayment(purchase._id)}
+                              onClick={() => handleMakePayment(purchase.id)}
                               className="gap-1"
                             >
                               <DollarSign className="h-3.5 w-3.5" />
@@ -590,7 +590,7 @@ export default function PendingBillsPage() {
           open={showPaymentDialog}
           onOpenChange={setShowPaymentDialog}
           purchaseId={selectedPurchaseId}
-          purchase={purchases.find(p => p._id === selectedPurchaseId)}
+          purchase={purchases.find(p => p.id === selectedPurchaseId)}
           onSuccess={handlePaymentSuccess}
         />
       )}

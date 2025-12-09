@@ -180,7 +180,7 @@ export function PendingBillPaymentDialog({
                 <div className="space-y-2 max-h-32 overflow-y-auto">
                   {paymentHistory.map((payment) => (
                     <div
-                      key={payment._id}
+                      key={payment.id}
                       className="flex items-center justify-between text-sm p-2 rounded bg-muted/50"
                     >
                       <div>

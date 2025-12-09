@@ -324,7 +324,7 @@ export default function ProductDetailPage({
     doc.setFont("helvetica", "bold");
     doc.text("Transaction ID:", 20, yPosition);
     doc.setFont("helvetica", "normal");
-    doc.text(payment._id.toString(), 60, yPosition);
+    doc.text(payment.id.toString(), 60, yPosition);
     
     yPosition += lineHeight;
     doc.setFont("helvetica", "bold");
@@ -609,7 +609,7 @@ export default function ProductDetailPage({
                   </TableHeader>
                   <TableBody>
                     {purchases.map((purchase) => (
-                      <TableRow key={purchase._id}>
+                      <TableRow key={purchase.id}>
                         <TableCell>
                           {new Date(purchase.date).toLocaleDateString()}
                         </TableCell>
@@ -644,7 +644,7 @@ export default function ProductDetailPage({
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                setSelectedPurchaseId(purchase._id);
+                                setSelectedPurchaseId(purchase.id);
                                 setIsPaymentOpen(true);
                               }}
                             >
@@ -683,7 +683,7 @@ export default function ProductDetailPage({
                   </TableHeader>
                   <TableBody>
                     {payments.map((payment) => (
-                      <TableRow key={payment._id}>
+                      <TableRow key={payment.id}>
                         <TableCell>
                           {new Date(payment.paymentDate).toLocaleDateString()}
                         </TableCell>
@@ -982,7 +982,7 @@ export default function ProductDetailPage({
               <div className="p-3 bg-secondary rounded-lg mb-4">
                 <p className="text-sm text-muted-foreground">Purchase</p>
                 <p className="text-lg font-semibold">
-                  {purchases.find((p) => p._id === selectedPurchaseId)?.productName ||
+                  {purchases.find((p) => p.id === selectedPurchaseId)?.productName ||
                     "Unknown"}
                 </p>
                 <div className="text-sm text-muted-foreground mt-2">
@@ -990,7 +990,7 @@ export default function ProductDetailPage({
                     <span>Total Amount:</span>
                     <span className="font-medium text-foreground">
                       ₹
-                      {(purchases.find((p) => p._id === selectedPurchaseId)
+                      {(purchases.find((p) => p.id === selectedPurchaseId)
                         ?.total || 0).toFixed(2)}
                     </span>
                   </div>
@@ -998,7 +998,7 @@ export default function ProductDetailPage({
                     <span>Remaining Balance:</span>
                     <span className="font-medium text-destructive">
                       ₹
-                      {(purchases.find((p) => p._id === selectedPurchaseId)
+                      {(purchases.find((p) => p.id === selectedPurchaseId)
                         ?.pendingAmount || 0).toFixed(2)}
                     </span>
                   </div>

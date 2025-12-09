@@ -1,10 +1,7 @@
 "use server";
 
-import connectDB from "@/lib/mongodb";
-import Payment, { IPayment } from "@/models/Payment";
-import Purchase from "@/models/Purchase";
+import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import mongoose from "mongoose";
 
 export type ActionResponse<T = unknown> = {
   success: boolean;
@@ -13,7 +10,7 @@ export type ActionResponse<T = unknown> = {
 };
 
 export type PaymentData = {
-  _id: string;
+  id: string;
   purchaseId: string;
   productId: string;
   amount: number;
@@ -24,15 +21,15 @@ export type PaymentData = {
 };
 
 // Helper to serialize payment
-function serializePayment(payment: IPayment): PaymentData {
+function serializePayment(payment: any): PaymentData {
   return {
-    _id: payment._id.toString(),
-    purchaseId: payment.purchaseId.toString(),
-    productId: payment.productId.toString(),
+    id: payment.id,
+    purchaseId: payment.purchaseId,
+    productId: payment.productId,
     amount: payment.amount,
     paymentDate: payment.paymentDate.toISOString(),
-    paymentMethod: payment.paymentMethod,
-    notes: payment.notes,
+    paymentMethod: payment.paymentMethod || undefined,
+    notes: payment.notes || undefined,
     createdAt: payment.createdAt.toISOString(),
   };
 }
@@ -46,21 +43,18 @@ export async function addPayment(formData: {
   notes?: string;
 }): Promise<ActionResponse<PaymentData>> {
   try {
-    await connectDB();
-
     const { purchaseId, amount, paymentDate, paymentMethod, notes } = formData;
 
     // Validations
-    if (!mongoose.Types.ObjectId.isValid(purchaseId)) {
-      return { success: false, error: "Invalid purchase ID" };
-    }
-
     if (!amount || amount <= 0) {
       return { success: false, error: "Payment amount must be greater than 0" };
     }
 
     // Find purchase
-    const purchase = await Purchase.findById(purchaseId);
+    const purchase = await prisma.purchase.findUnique({
+      where: { id: purchaseId },
+    });
+    
     if (!purchase) {
       return { success: false, error: "Purchase not found" };
     }
@@ -75,24 +69,28 @@ export async function addPayment(formData: {
     }
 
     // Create payment record
-    const payment = await Payment.create({
-      purchaseId,
-      productId: purchase.productId,
-      amount,
-      paymentDate: paymentDate || new Date(),
-      paymentMethod: paymentMethod?.trim(),
-      notes: notes?.trim(),
+    const payment = await prisma.payment.create({
+      data: {
+        purchaseId,
+        productId: purchase.productId,
+        amount,
+        paymentDate: paymentDate || new Date(),
+        paymentMethod: paymentMethod?.trim(),
+        notes: notes?.trim(),
+      },
     });
 
     // Update purchase paidAmount
-    purchase.paidAmount += amount;
-    
-    // If fully paid, update status
-    if (purchase.paidAmount >= purchase.total) {
-      purchase.status = "PAID";
-    }
-    
-    await purchase.save();
+    const newPaidAmount = purchase.paidAmount + amount;
+    const newStatus = newPaidAmount >= purchase.total ? "PAID" : purchase.status;
+
+    await prisma.purchase.update({
+      where: { id: purchaseId },
+      data: {
+        paidAmount: newPaidAmount,
+        status: newStatus,
+      },
+    });
 
     revalidatePath("/stock");
     revalidatePath("/products");
@@ -111,14 +109,10 @@ export async function getPaymentsByPurchase(
   purchaseId: string
 ): Promise<ActionResponse<PaymentData[]>> {
   try {
-    await connectDB();
-
-    if (!mongoose.Types.ObjectId.isValid(purchaseId)) {
-      return { success: false, error: "Invalid purchase ID" };
-    }
-
-    const payments = await Payment.find({ purchaseId })
-      .sort({ paymentDate: -1 });
+    const payments = await prisma.payment.findMany({
+      where: { purchaseId },
+      orderBy: { paymentDate: 'desc' },
+    });
 
     return {
       success: true,
@@ -136,14 +130,10 @@ export async function getPaymentsByProduct(
   productId: string
 ): Promise<ActionResponse<PaymentData[]>> {
   try {
-    await connectDB();
-
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return { success: false, error: "Invalid product ID" };
-    }
-
-    const payments = await Payment.find({ productId })
-      .sort({ paymentDate: -1 });
+    const payments = await prisma.payment.findMany({
+      where: { productId },
+      orderBy: { paymentDate: 'desc' },
+    });
 
     return {
       success: true,
@@ -161,36 +151,40 @@ export async function deletePayment(
   paymentId: string
 ): Promise<ActionResponse<void>> {
   try {
-    await connectDB();
-
-    if (!mongoose.Types.ObjectId.isValid(paymentId)) {
-      return { success: false, error: "Invalid payment ID" };
-    }
-
     // Find payment first
-    const payment = await Payment.findById(paymentId);
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+    
     if (!payment) {
       return { success: false, error: "Payment not found" };
     }
 
     // Get the purchase
-    const purchase = await Purchase.findById(payment.purchaseId);
+    const purchase = await prisma.purchase.findUnique({
+      where: { id: payment.purchaseId },
+    });
+    
     if (!purchase) {
       return { success: false, error: "Associated purchase not found" };
     }
 
     // Update purchase paidAmount
-    purchase.paidAmount -= payment.amount;
-    
-    // If now unpaid and previously was PAID, revert to PENDING
-    if (purchase.paidAmount < purchase.total && purchase.status === "PAID") {
-      purchase.status = "PENDING";
-    }
-    
-    await purchase.save();
+    const newPaidAmount = purchase.paidAmount - payment.amount;
+    const newStatus = newPaidAmount < purchase.total && purchase.status === "PAID" ? "PENDING" : purchase.status;
+
+    await prisma.purchase.update({
+      where: { id: payment.purchaseId },
+      data: {
+        paidAmount: newPaidAmount,
+        status: newStatus,
+      },
+    });
 
     // Delete payment
-    await Payment.deleteOne({ _id: paymentId });
+    await prisma.payment.delete({
+      where: { id: paymentId },
+    });
 
     revalidatePath("/stock");
     revalidatePath("/products");

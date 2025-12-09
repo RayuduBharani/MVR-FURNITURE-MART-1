@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 interface Product {
-  _id: string;
+  id: string;
   name: string;
   sellingPrice: number;
   stock: number;
@@ -69,7 +69,7 @@ export default function ProductSearch({
               </div>
               {searchResults.map((product) => (
                 <button
-                  key={product._id}
+                  key={product.id}
                   onClick={() => onSelectProduct(product)}
                   className="w-full text-left px-4 py-4 hover:bg-muted/50 border-b border-border last:border-b-0 transition-all hover:shadow-sm"
                 >

@@ -1,9 +1,6 @@
 "use server";
 
-import connectDB from "@/lib/mongodb";
-import Sale from "@/models/Sale";
-import Product from "@/models/Product";
-import Expenditure from "@/models/Expenditure";
+import prisma from "@/lib/prisma";
 
 export type DashboardStats = {
   todaySales: number;
@@ -29,8 +26,6 @@ export type ActionResponse<T = unknown> = {
 
 export async function getDashboardStats(): Promise<ActionResponse<DashboardStats>> {
   try {
-    await connectDB();
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -40,56 +35,57 @@ export async function getDashboardStats(): Promise<ActionResponse<DashboardStats
     const currentYear = today.getFullYear();
 
     // Get today's sales count
-    const todaySalesCount = await Sale.countDocuments({
-      date: { $gte: today, $lt: tomorrow },
+    const todaySalesCount = await prisma.sale.count({
+      where: {
+        date: {
+          gte: today,
+          lt: tomorrow,
+        },
+      },
     });
 
     // Get total sales count
-    const totalSalesCount = await Sale.countDocuments();
+    const totalSalesCount = await prisma.sale.count();
 
     // Get pending bills count
-    const pendingBillsCount = await Sale.countDocuments({
-      status: "PENDING",
+    const pendingBillsCount = await prisma.sale.count({
+      where: {
+        status: "PENDING",
+      },
     });
 
     // Get low stock products (stock <= 5)
-    const lowStockCount = await Product.countDocuments({
-      stock: { $lte: 5 },
+    const lowStockCount = await prisma.product.count({
+      where: {
+        stock: {
+          lte: 5,
+        },
+      },
     });
 
     // Get monthly revenue (sum of all sales this month)
-    const monthlyRevenue = await Sale.aggregate([
-      {
-        $match: {
-          date: {
-            $gte: new Date(currentYear, currentMonth - 1, 1),
-            $lt: new Date(currentYear, currentMonth, 1),
-          },
+    const monthlyRevenueResult = await prisma.sale.aggregate({
+      where: {
+        date: {
+          gte: new Date(currentYear, currentMonth - 1, 1),
+          lt: new Date(currentYear, currentMonth, 1),
         },
       },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$totalAmount" },
-        },
+      _sum: {
+        totalAmount: true,
       },
-    ]);
+    });
 
     // Get monthly expenses
-    const monthlyExpenses = await Expenditure.aggregate([
-      {
-        $match: {
-          year: currentYear,
-          month: currentMonth,
-        },
+    const monthlyExpensesResult = await prisma.expenditure.aggregate({
+      where: {
+        year: currentYear,
+        month: currentMonth,
       },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$amount" },
-        },
+      _sum: {
+        amount: true,
       },
-    ]);
+    });
 
     return {
       success: true,
@@ -98,8 +94,8 @@ export async function getDashboardStats(): Promise<ActionResponse<DashboardStats
         totalSales: totalSalesCount,
         pendingBills: pendingBillsCount,
         lowStock: lowStockCount,
-        monthlyRevenue: monthlyRevenue[0]?.total || 0,
-        monthlyExpenses: monthlyExpenses[0]?.total || 0,
+        monthlyRevenue: monthlyRevenueResult._sum.totalAmount || 0,
+        monthlyExpenses: monthlyExpensesResult._sum.amount || 0,
       },
     };
   } catch (error: unknown) {
@@ -113,15 +109,19 @@ export async function getDashboardStats(): Promise<ActionResponse<DashboardStats
 
 export async function getRecentActivities(): Promise<ActionResponse<RecentActivity[]>> {
   try {
-    await connectDB();
-
     const activities: RecentActivity[] = [];
 
     // Get recent sales (last 5)
-    const recentSales = await Sale.find()
-      .sort({ date: -1 })
-      .limit(5)
-      .select("customerName totalAmount date _id");
+    const recentSales = await prisma.sale.findMany({
+      take: 5,
+      orderBy: { date: 'desc' },
+      select: {
+        id: true,
+        customerName: true,
+        totalAmount: true,
+        date: true,
+      },
+    });
 
     recentSales.forEach((sale) => {
       activities.push({
@@ -133,10 +133,15 @@ export async function getRecentActivities(): Promise<ActionResponse<RecentActivi
     });
 
     // Get recent expenditures (last 3)
-    const recentExpenses = await Expenditure.find()
-      .sort({ date: -1 })
-      .limit(3)
-      .select("category amount date");
+    const recentExpenses = await prisma.expenditure.findMany({
+      take: 3,
+      orderBy: { date: 'desc' },
+      select: {
+        category: true,
+        amount: true,
+        date: true,
+      },
+    });
 
     recentExpenses.forEach((expense) => {
       activities.push({
@@ -148,10 +153,19 @@ export async function getRecentActivities(): Promise<ActionResponse<RecentActivi
     });
 
     // Get low stock alerts
-    const lowStockProducts = await Product.find({ stock: { $lte: 5 } })
-      .sort({ stock: 1 })
-      .limit(3)
-      .select("name stock");
+    const lowStockProducts = await prisma.product.findMany({
+      where: {
+        stock: {
+          lte: 5,
+        },
+      },
+      take: 3,
+      orderBy: { stock: 'asc' },
+      select: {
+        name: true,
+        stock: true,
+      },
+    });
 
     lowStockProducts.forEach((product) => {
       activities.push({

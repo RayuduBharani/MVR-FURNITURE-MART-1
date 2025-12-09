@@ -25,7 +25,7 @@ interface PaymentHistory {
 }
 
 interface Sale {
-  _id: string;
+  id: string;
   date: string;
   customerName: string;
   paymentType: string;
@@ -94,7 +94,7 @@ export default function SaleDetailsPage() {
     setPaymentLoading(true);
 
     try {
-      const result = await makeAdditionalPayment(sale._id, amount, paymentType);
+      const result = await makeAdditionalPayment(sale.id, amount, paymentType);
       
       if (result.success) {
         // Check if this payment completes the balance
@@ -277,7 +277,7 @@ export default function SaleDetailsPage() {
       pdf.setFont('helvetica', 'bold');
       pdf.text('Receipt #:', 15, yPosition);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`${sale._id}-${paymentIndex + 1}`, 50, yPosition);
+      pdf.text(`${sale.id}-${paymentIndex + 1}`, 50, yPosition);
       
       yPosition += 7;
       pdf.setFont('helvetica', 'bold');

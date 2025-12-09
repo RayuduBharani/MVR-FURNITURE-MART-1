@@ -1,10 +1,8 @@
 "use server";
 
-import connectDB from "@/lib/mongodb";
-import Product, { IProduct } from "@/models/Product";
-import Purchase from "@/models/Purchase";
+import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import mongoose from "mongoose";
+import { Product } from "@prisma/client";
 
 // Types for responses
 export type ActionResponse<T = unknown> = {
@@ -14,7 +12,7 @@ export type ActionResponse<T = unknown> = {
 };
 
 export type ProductData = {
-  _id: string;
+  id: string;
   name: string;
   category: string;
   purchasePrice: number;
@@ -25,16 +23,16 @@ export type ProductData = {
   updatedAt: string;
 };
 
-// Helper to serialize MongoDB document
-function serializeProduct(product: IProduct): ProductData {
+// Helper to serialize Prisma document
+function serializeProduct(product: Product): ProductData {
   return {
-    _id: product._id.toString(),
+    id: product.id,
     name: product.name,
     category: product.category,
     purchasePrice: product.purchasePrice,
     sellingPrice: product.sellingPrice,
     stock: product.stock,
-    supplierName: product.supplierName || "",
+    supplierName: product.supplierName,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
@@ -43,8 +41,9 @@ function serializeProduct(product: IProduct): ProductData {
 // GET ALL PRODUCTS
 export async function getProducts(): Promise<ActionResponse<ProductData[]>> {
   try {
-    await connectDB();
-    const products = await Product.find({}).sort({ createdAt: -1 });
+    const products = await prisma.product.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
     return {
       success: true,
       data: products.map(serializeProduct),
@@ -58,13 +57,9 @@ export async function getProducts(): Promise<ActionResponse<ProductData[]>> {
 // GET SINGLE PRODUCT BY ID
 export async function getProductById(id: string): Promise<ActionResponse<ProductData>> {
   try {
-    await connectDB();
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return { success: false, error: "Invalid product ID" };
-    }
-    
-    const product = await Product.findById(id);
+    const product = await prisma.product.findUnique({
+      where: { id },
+    });
     
     if (!product) {
       return { success: false, error: "Product not found" };
@@ -87,8 +82,6 @@ export async function createProduct(formData: {
   supplierName?: string;
 }): Promise<ActionResponse<ProductData>> {
   try {
-    await connectDB();
-    
     const { name, category, purchasePrice, sellingPrice, stock, supplierName } = formData;
 
     // Validation: name is required
@@ -96,9 +89,14 @@ export async function createProduct(formData: {
       return { success: false, error: "Product name is required" };
     }
 
-    // Check for duplicate name
-    const existingProduct = await Product.findOne({ 
-      name: { $regex: new RegExp(`^${name.trim()}$`, "i") } 
+    // Check for duplicate name (case-insensitive)
+    const existingProduct = await prisma.product.findFirst({
+      where: {
+        name: {
+          equals: name.trim(),
+          mode: 'insensitive',
+        },
+      },
     });
     
     if (existingProduct) {
@@ -122,13 +120,15 @@ export async function createProduct(formData: {
       return { success: false, error: "Stock cannot be negative" };
     }
 
-    const product = await Product.create({
-      name: name.trim(),
-      category: category?.trim() || "",
-      purchasePrice: parsedPurchasePrice,
-      sellingPrice: parsedSellingPrice,
-      stock: parsedStock,
-      supplierName: supplierName?.trim() || "",
+    const product = await prisma.product.create({
+      data: {
+        name: name.trim(),
+        category: category?.trim() || "",
+        purchasePrice: parsedPurchasePrice,
+        sellingPrice: parsedSellingPrice,
+        stock: parsedStock,
+        supplierName: supplierName?.trim() || "",
+      },
     });
 
     revalidatePath("/stock");
@@ -138,7 +138,8 @@ export async function createProduct(formData: {
   } catch (error) {
     console.error("Error creating product:", error);
     
-    if ((error as { code?: number }).code === 11000) {
+    // Prisma unique constraint error
+    if ((error as { code?: string }).code === 'P2002') {
       return { success: false, error: "A product with this name already exists" };
     }
     
@@ -159,25 +160,27 @@ export async function updateProduct(
   }
 ): Promise<ActionResponse<ProductData>> {
   try {
-    await connectDB();
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return { success: false, error: "Invalid product ID" };
-    }
-
     const { name, category, purchasePrice, sellingPrice, stock, supplierName } = formData;
 
     // Check if product exists
-    const existingProduct = await Product.findById(id);
+    const existingProduct = await prisma.product.findUnique({
+      where: { id },
+    });
+    
     if (!existingProduct) {
       return { success: false, error: "Product not found" };
     }
 
-    // If name is being changed, check for duplicates
+    // If name is being changed, check for duplicates (case-insensitive)
     if (name && name.trim() !== existingProduct.name) {
-      const duplicateProduct = await Product.findOne({
-        _id: { $ne: id },
-        name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
+      const duplicateProduct = await prisma.product.findFirst({
+        where: {
+          id: { not: id },
+          name: {
+            equals: name.trim(),
+            mode: 'insensitive',
+          },
+        },
       });
       
       if (duplicateProduct) {
@@ -186,7 +189,14 @@ export async function updateProduct(
     }
 
     // Validate values
-    const updateData: Partial<IProduct> = {};
+    const updateData: {
+      name?: string;
+      category?: string;
+      purchasePrice?: number;
+      sellingPrice?: number;
+      stock?: number;
+      supplierName?: string;
+    } = {};
     
     if (name !== undefined) {
       if (name.trim() === "") {
@@ -227,15 +237,10 @@ export async function updateProduct(
       updateData.supplierName = supplierName.trim();
     }
 
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedProduct) {
-      return { success: false, error: "Failed to update product" };
-    }
+    const updatedProduct = await prisma.product.update({
+      where: { id },
+      data: updateData,
+    });
 
     revalidatePath("/stock");
     revalidatePath("/products");
@@ -244,7 +249,8 @@ export async function updateProduct(
   } catch (error) {
     console.error("Error updating product:", error);
     
-    if ((error as { code?: number }).code === 11000) {
+    // Prisma unique constraint error
+    if ((error as { code?: string }).code === 'P2002') {
       return { success: false, error: "A product with this name already exists" };
     }
     
@@ -255,14 +261,11 @@ export async function updateProduct(
 // DELETE PRODUCT
 export async function deleteProduct(id: string): Promise<ActionResponse> {
   try {
-    await connectDB();
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return { success: false, error: "Invalid product ID" };
-    }
-
     // Check if product has purchase history
-    const purchaseCount = await Purchase.countDocuments({ productId: id });
+    const purchaseCount = await prisma.purchase.count({
+      where: { productId: id },
+    });
+    
     if (purchaseCount > 0) {
       return { 
         success: false, 
@@ -270,11 +273,9 @@ export async function deleteProduct(id: string): Promise<ActionResponse> {
       };
     }
 
-    const deletedProduct = await Product.findByIdAndDelete(id);
-    
-    if (!deletedProduct) {
-      return { success: false, error: "Product not found" };
-    }
+    await prisma.product.delete({
+      where: { id },
+    });
 
     revalidatePath("/stock");
     revalidatePath("/products");
@@ -282,6 +283,12 @@ export async function deleteProduct(id: string): Promise<ActionResponse> {
     return { success: true };
   } catch (error) {
     console.error("Error deleting product:", error);
+    
+    // Prisma record not found error
+    if ((error as { code?: string }).code === 'P2025') {
+      return { success: false, error: "Product not found" };
+    }
+    
     return { success: false, error: "Failed to delete product" };
   }
 }
@@ -289,13 +296,10 @@ export async function deleteProduct(id: string): Promise<ActionResponse> {
 // GET TOTAL STOCK OF A PRODUCT
 export async function getProductStock(id: string): Promise<ActionResponse<number>> {
   try {
-    await connectDB();
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return { success: false, error: "Invalid product ID" };
-    }
-    
-    const product = await Product.findById(id).select("stock");
+    const product = await prisma.product.findUnique({
+      where: { id },
+      select: { stock: true },
+    });
     
     if (!product) {
       return { success: false, error: "Product not found" };

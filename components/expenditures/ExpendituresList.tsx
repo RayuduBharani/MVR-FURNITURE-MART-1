@@ -120,7 +120,7 @@ export default function ExpendituresList({
             </TableHeader>
             <TableBody>
               {expenditures.map((expenditure) => (
-                <TableRow key={expenditure._id}>
+                <TableRow key={expenditure.id}>
                   <TableCell className="font-medium">
                     {formatDate(expenditure.date)}
                   </TableCell>
@@ -149,7 +149,7 @@ export default function ExpendituresList({
                         <Button
                           variant="ghost"
                           size="icon"
-                          disabled={deletingId === expenditure._id}
+                          disabled={deletingId === expenditure.id}
                           className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -166,7 +166,7 @@ export default function ExpendituresList({
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handleDelete(expenditure._id)}
+                            onClick={() => handleDelete(expenditure.id)}
                             className="bg-destructive hover:bg-destructive/90"
                           >
                             Delete

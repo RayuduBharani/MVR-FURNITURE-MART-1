@@ -374,9 +374,9 @@ export default function ReportsPage() {
                       <TableBody>
                         {dailyReport.paidBillsToday.map((bill) => (
                           <TableRow 
-                            key={bill._id}
+                            key={bill.id}
                             className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => router.push(`/sales/${bill._id}`)}
+                            onClick={() => router.push(`/sales/${bill.id}`)}
                           >
                             <TableCell className="font-medium">{bill.customerName}</TableCell>
                             <TableCell>{formatCurrency(bill.totalAmount)}</TableCell>

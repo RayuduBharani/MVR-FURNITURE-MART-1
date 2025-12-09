@@ -452,7 +452,7 @@ export default function StockPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredProducts.map((product) => (
-                      <TableRow key={product._id}>
+                      <TableRow key={product.id}>
                         <TableCell className="font-medium">{product.name}</TableCell>
                         <TableCell className="text-muted-foreground">{product.category || "-"}</TableCell>
                         <TableCell className="text-muted-foreground">{product.supplierName || "-"}</TableCell>
@@ -466,7 +466,7 @@ export default function StockPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Link href={`/stock/product/${product._id}`}>
+                          <Link href={`/stock/product/${product.id}`}>
                             <Button size="sm" variant="ghost">
                               <Eye className="w-4 h-4 mr-1" />
                               View

@@ -1,8 +1,8 @@
 "use server";
 
-import connectDB from "@/lib/mongodb";
-import Expenditure, { IExpenditure } from "@/models/Expenditure";
+import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { Expenditure } from "@prisma/client";
 
 // Types for responses
 export type ActionResponse<T = unknown> = {
@@ -12,7 +12,7 @@ export type ActionResponse<T = unknown> = {
 };
 
 export type ExpenditureData = {
-  _id: string;
+  id: string;
   category: string;
   amount: number;
   notes?: string;
@@ -34,10 +34,10 @@ export type CreateExpenditureInput = {
   notes?: string;
 };
 
-// Helper to serialize MongoDB document
-function serializeExpenditure(expenditure: IExpenditure): ExpenditureData {
+// Helper to serialize Prisma document
+function serializeExpenditure(expenditure: Expenditure): ExpenditureData {
   return {
-    _id: expenditure._id.toString(),
+    id: expenditure.id,
     category: expenditure.category,
     amount: expenditure.amount,
     notes: expenditure.notes || "",
@@ -84,21 +84,21 @@ export async function createExpenditure(
       };
     }
 
-    await connectDB();
-
     // Get current date and compute year & month
     const currentDate = new Date();
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
 
     // Create new expenditure
-    const expenditure = await Expenditure.create({
-      category: input.category.trim(),
-      amount: input.amount,
-      notes: input.notes?.trim() || "",
-      date: currentDate,
-      year: year,
-      month: month,
+    const expenditure = await prisma.expenditure.create({
+      data: {
+        category: input.category.trim(),
+        amount: input.amount,
+        notes: input.notes?.trim() || "",
+        date: currentDate,
+        year: year,
+        month: month,
+      },
     });
 
     revalidatePath("/expenditures");
@@ -137,13 +137,14 @@ export async function getExpendituresByMonth(
       };
     }
 
-    await connectDB();
-
     // Fetch expenditures for the given month and year
-    const expenditures = await Expenditure.find({
-      year: year,
-      month: month,
-    }).sort({ date: -1 });
+    const expenditures = await prisma.expenditure.findMany({
+      where: {
+        year: year,
+        month: month,
+      },
+      orderBy: { date: 'desc' },
+    });
 
     // Calculate total amount
     const totalAmount = expenditures.reduce(
@@ -172,8 +173,9 @@ export async function getAllExpenditures(): Promise<
   ActionResponse<ExpenditureData[]>
 > {
   try {
-    await connectDB();
-    const expenditures = await Expenditure.find({}).sort({ date: -1 });
+    const expenditures = await prisma.expenditure.findMany({
+      orderBy: { date: 'desc' },
+    });
 
     return {
       success: true,
@@ -193,8 +195,9 @@ export async function getExpenditureById(
   id: string
 ): Promise<ActionResponse<ExpenditureData>> {
   try {
-    await connectDB();
-    const expenditure = await Expenditure.findById(id);
+    const expenditure = await prisma.expenditure.findUnique({
+      where: { id },
+    });
 
     if (!expenditure) {
       return {
@@ -221,16 +224,9 @@ export async function deleteExpenditure(
   id: string
 ): Promise<ActionResponse<{ id: string }>> {
   try {
-    await connectDB();
-
-    const expenditure = await Expenditure.findByIdAndDelete(id);
-
-    if (!expenditure) {
-      return {
-        success: false,
-        error: "Expenditure not found",
-      };
-    }
+    await prisma.expenditure.delete({
+      where: { id },
+    });
 
     revalidatePath("/expenditures");
 
@@ -240,6 +236,14 @@ export async function deleteExpenditure(
     };
   } catch (error) {
     console.error("Error deleting expenditure:", error);
+    
+    if ((error as { code?: string }).code === 'P2025') {
+      return {
+        success: false,
+        error: "Expenditure not found",
+      };
+    }
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to delete expenditure",
@@ -270,8 +274,6 @@ export async function updateExpenditure(
       }
     }
 
-    await connectDB();
-
     const updateData: Partial<{
       category: string;
       amount: number;
@@ -282,17 +284,10 @@ export async function updateExpenditure(
     if (input.amount !== undefined) updateData.amount = input.amount;
     if (input.notes !== undefined) updateData.notes = input.notes.trim();
 
-    const expenditure = await Expenditure.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
+    const expenditure = await prisma.expenditure.update({
+      where: { id },
+      data: updateData,
     });
-
-    if (!expenditure) {
-      return {
-        success: false,
-        error: "Expenditure not found",
-      };
-    }
 
     revalidatePath("/expenditures");
 
@@ -302,6 +297,14 @@ export async function updateExpenditure(
     };
   } catch (error) {
     console.error("Error updating expenditure:", error);
+    
+    if ((error as { code?: string }).code === 'P2025') {
+      return {
+        success: false,
+        error: "Expenditure not found",
+      };
+    }
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update expenditure",
@@ -315,17 +318,17 @@ export async function getMonthlyTotal(
   month: number
 ): Promise<ActionResponse<{ totalAmount: number }>> {
   try {
-    await connectDB();
-
-    const expenditures = await Expenditure.find({
-      year: year,
-      month: month,
+    const result = await prisma.expenditure.aggregate({
+      where: {
+        year: year,
+        month: month,
+      },
+      _sum: {
+        amount: true,
+      },
     });
 
-    const totalAmount = expenditures.reduce(
-      (sum, exp) => sum + exp.amount,
-      0
-    );
+    const totalAmount = result._sum.amount || 0;
 
     return {
       success: true,
@@ -348,41 +351,29 @@ export async function getExpendituresByCategoryForMonth(
   ActionResponse<{ category: string; totalAmount: number; count: number }[]>
 > {
   try {
-    await connectDB();
-
-    const expenditures = await Expenditure.find({
-      year: year,
-      month: month,
+    const result = await prisma.expenditure.groupBy({
+      by: ['category'],
+      where: {
+        year: year,
+        month: month,
+      },
+      _sum: {
+        amount: true,
+      },
+      _count: {
+        id: true,
+      },
     });
 
-    // Group by category
-    const categoryMap = new Map<
-      string,
-      { totalAmount: number; count: number }
-    >();
-
-    expenditures.forEach((exp) => {
-      const existing = categoryMap.get(exp.category) || {
-        totalAmount: 0,
-        count: 0,
-      };
-      categoryMap.set(exp.category, {
-        totalAmount: existing.totalAmount + exp.amount,
-        count: existing.count + 1,
-      });
-    });
-
-    const result = Array.from(categoryMap.entries()).map(
-      ([category, data]) => ({
-        category,
-        totalAmount: data.totalAmount,
-        count: data.count,
-      })
-    );
+    const formattedResult = result.map((item) => ({
+      category: item.category,
+      totalAmount: item._sum.amount || 0,
+      count: item._count.id,
+    }));
 
     return {
       success: true,
-      data: result,
+      data: formattedResult,
     };
   } catch (error) {
     console.error("Error fetching category summary:", error);
@@ -396,14 +387,17 @@ export async function getExpendituresByCategoryForMonth(
 // GET AVAILABLE YEARS (for filter dropdown)
 export async function getAvailableYears(): Promise<ActionResponse<number[]>> {
   try {
-    await connectDB();
+    const result = await prisma.expenditure.findMany({
+      distinct: ['year'],
+      select: { year: true },
+      orderBy: { year: 'desc' },
+    });
 
-    const years = await Expenditure.distinct("year");
-    const sortedYears = years.sort((a, b) => b - a);
+    const years = result.map(item => item.year);
 
     return {
       success: true,
-      data: sortedYears,
+      data: years,
     };
   } catch (error) {
     console.error("Error fetching available years:", error);

@@ -14,7 +14,7 @@ interface PaymentHistory {
 }
 
 interface Sale {
-  _id: string;
+  id: string;
   date: string;
   customerName: string;
   paymentType: string;
@@ -87,7 +87,7 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
               const actualBalance = sale.totalAmount - totalPaid;
 
             return (
-              <TableRow key={sale._id} className="hover:bg-gray-50">
+              <TableRow key={sale.id} className="hover:bg-gray-50">
                 <TableCell className="font-medium">{sale.customerName}</TableCell>
                 <TableCell className="text-sm">
                   {sale.serialNumber || '-'}
@@ -122,7 +122,7 @@ export default function PendingBillsTable({ sales, onPayEMI }: PendingBillsTable
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => window.location.href = `/sales/${sale._id}`}
+                    onClick={() => window.location.href = `/sales/${sale.id}`}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>

@@ -1,7 +1,6 @@
 "use server";
 
-import connectDB from "@/lib/mongodb";
-import Expenditure from "@/models/Expenditure";
+import prisma from "@/lib/prisma";
 
 export type ActionResponse<T = unknown> = {
   success: boolean;
@@ -60,8 +59,6 @@ export async function getFinancialYearSummary(
   financialYear: number
 ): Promise<ActionResponse<FinancialYearSummary>> {
   try {
-    await connectDB();
-
     const range = getFinancialYearRange(financialYear);
     const monthNames = [
       'April', 'May', 'June', 'July', 'August', 'September',
@@ -69,20 +66,26 @@ export async function getFinancialYearSummary(
     ];
 
     // Fetch all expenditures for the financial year
-    const expenditures = await Expenditure.find({
-      $or: [
-        // April to December of start year
-        {
-          year: range.startYear,
-          month: { $gte: range.startMonth, $lte: 12 },
-        },
-        // January to March of end year
-        {
-          year: range.endYear,
-          month: { $gte: 1, $lte: range.endMonth },
-        },
+    const expenditures = await prisma.expenditure.findMany({
+      where: {
+        OR: [
+          // April to December of start year
+          {
+            year: range.startYear,
+            month: { gte: range.startMonth, lte: 12 },
+          },
+          // January to March of end year
+          {
+            year: range.endYear,
+            month: { gte: 1, lte: range.endMonth },
+          },
+        ],
+      },
+      orderBy: [
+        { year: 'asc' },
+        { month: 'asc' },
       ],
-    }).sort({ year: 1, month: 1 });
+    });
 
     // Calculate monthly breakdown
     const monthlyMap = new Map<string, number>();
@@ -140,12 +143,14 @@ export async function getFinancialYearSummary(
 // GET AVAILABLE FINANCIAL YEARS
 export async function getAvailableFinancialYears(): Promise<ActionResponse<number[]>> {
   try {
-    await connectDB();
+    const years = await prisma.expenditure.findMany({
+      distinct: ['year'],
+      select: { year: true },
+    });
 
-    const years = await Expenditure.distinct("year");
     const financialYears = new Set<number>();
 
-    years.forEach((year) => {
+    years.forEach(({ year }) => {
       // Each calendar year could be part of two financial years
       financialYears.add(year); // FY starting this year
       if (year > 2000) {

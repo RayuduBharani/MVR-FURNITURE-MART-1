@@ -1,10 +1,7 @@
 "use server";
 
-import connectDB from "@/lib/mongodb";
-import Product from "@/models/Product";
-import Purchase, { IPurchase, PurchaseStatus } from "@/models/Purchase";
+import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import mongoose from "mongoose";
 
 // Types for responses
 export type ActionResponse<T = unknown> = {
@@ -13,15 +10,17 @@ export type ActionResponse<T = unknown> = {
   error?: string;
 };
 
+export type PurchaseStatus = "PAID" | "PENDING";
+
 export type PurchaseData = {
-  _id: string;
+  id: string;
   productId: string;
   productName: string;
   quantity: number;
   pricePerUnit: number;
   total: number;
   supplierName: string;
-  status: PurchaseStatus;
+  status: string;
   initialPayment: number;
   paidAmount: number;
   pendingAmount: number;
@@ -31,7 +30,7 @@ export type PurchaseData = {
 };
 
 export type PurchaseListItem = {
-  _id: string;
+  id: string;
   date: string;
   supplierName: string;
   productName: string;
@@ -39,18 +38,18 @@ export type PurchaseListItem = {
   quantity: number;
   pricePerUnit: number;
   total: number;
-  status: PurchaseStatus;
+  status: string;
   initialPayment: number;
   paidAmount: number;
   pendingAmount: number;
 };
 
-// Helper to serialize MongoDB document
-function serializePurchase(purchase: IPurchase, productName: string): PurchaseData {
+// Helper to serialize Prisma document
+function serializePurchase(purchase: any, productName: string): PurchaseData {
   const paidAmount = purchase.paidAmount || purchase.initialPayment || (purchase.status === "PAID" ? purchase.total : 0);
   return {
-    _id: purchase._id.toString(),
-    productId: purchase.productId.toString(),
+    id: purchase.id,
+    productId: purchase.productId,
     productName,
     quantity: purchase.quantity,
     pricePerUnit: purchase.pricePerUnit,
@@ -76,15 +75,9 @@ export async function addPurchase(formData: {
   initialPayment?: number;
 }): Promise<ActionResponse<PurchaseData>> {
   try {
-    await connectDB();
-    
     const { productId, quantity, pricePerUnit, supplierName, isPending, initialPayment } = formData;
 
     // Validations
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return { success: false, error: "Invalid product ID" };
-    }
-
     if (!quantity || quantity <= 0) {
       return { success: false, error: "Quantity must be greater than 0" };
     }
@@ -94,7 +87,10 @@ export async function addPurchase(formData: {
     }
 
     // Find product
-    const product = await Product.findById(productId);
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+    
     if (!product) {
       return { success: false, error: "Product not found" };
     }
@@ -108,21 +104,25 @@ export async function addPurchase(formData: {
     const paymentAmount = isPending ? (initialPayment || 0) : total;
 
     // Create purchase record
-    const purchase = await Purchase.create({
-      productId,
-      quantity,
-      pricePerUnit,
-      total,
-      supplierName: finalSupplierName,
-      status,
-      initialPayment: isPending ? (initialPayment || 0) : 0,
-      paidAmount: paymentAmount,
-      date: new Date(),
+    const purchase = await prisma.purchase.create({
+      data: {
+        productId,
+        quantity,
+        pricePerUnit,
+        total,
+        supplierName: finalSupplierName,
+        status,
+        initialPayment: isPending ? (initialPayment || 0) : 0,
+        paidAmount: paymentAmount,
+        date: new Date(),
+      },
     });
 
     // Update product stock
-    product.stock += quantity;
-    await product.save();
+    await prisma.product.update({
+      where: { id: productId },
+      data: { stock: { increment: quantity } },
+    });
 
     revalidatePath("/stock");
     revalidatePath("/products");
@@ -140,25 +140,26 @@ export async function getPurchases(
   status?: PurchaseStatus
 ): Promise<ActionResponse<PurchaseListItem[]>> {
   try {
-    await connectDB();
+    const where = status ? { status } : {};
 
-    const query: { status?: PurchaseStatus } = {};
-    if (status) {
-      query.status = status;
-    }
-
-    const purchases = await Purchase.find(query)
-      .populate("productId", "name")
-      .sort({ date: -1 });
+    const purchases = await prisma.purchase.findMany({
+      where,
+      include: {
+        product: {
+          select: { name: true },
+        },
+      },
+      orderBy: { date: 'desc' },
+    });
 
     const data: PurchaseListItem[] = purchases.map((purchase) => {
       const paidAmount = purchase.paidAmount || purchase.initialPayment || (purchase.status === "PAID" ? purchase.total : 0);
       return {
-        _id: purchase._id.toString(),
+        id: purchase.id,
         date: purchase.date.toISOString(),
         supplierName: purchase.supplierName,
-        productId: purchase.productId.toString(),
-        productName: (purchase.productId as unknown as { name: string })?.name || "Unknown",
+        productId: purchase.productId,
+        productName: purchase.product.name,
         quantity: purchase.quantity,
         pricePerUnit: purchase.pricePerUnit,
         total: purchase.total,
@@ -181,26 +182,26 @@ export async function getPurchasesByProduct(
   productId: string
 ): Promise<ActionResponse<PurchaseListItem[]>> {
   try {
-    await connectDB();
-
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return { success: false, error: "Invalid product ID" };
-    }
-
-    const product = await Product.findById(productId);
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+    
     if (!product) {
       return { success: false, error: "Product not found" };
     }
 
-    const purchases = await Purchase.find({ productId }).sort({ date: -1 });
+    const purchases = await prisma.purchase.findMany({
+      where: { productId },
+      orderBy: { date: 'desc' },
+    });
 
     const data: PurchaseListItem[] = purchases.map((purchase) => {
       const paidAmount = purchase.paidAmount || purchase.initialPayment || (purchase.status === "PAID" ? purchase.total : 0);
       return {
-        _id: purchase._id.toString(),
+        id: purchase.id,
         date: purchase.date.toISOString(),
         supplierName: purchase.supplierName,
-        productId: purchase.productId.toString(),
+        productId: purchase.productId,
         productName: product.name,
         quantity: purchase.quantity,
         pricePerUnit: purchase.pricePerUnit,
@@ -222,25 +223,19 @@ export async function getPurchasesByProduct(
 // GET PENDING BILLS TOTAL (calculates total - paidAmount for pending purchases)
 export async function getPendingBillsTotal(): Promise<ActionResponse<number>> {
   try {
-    await connectDB();
-
-    const result = await Purchase.aggregate([
-      { $match: { status: "PENDING" } },
-      { 
-        $group: { 
-          _id: null, 
-          total: { 
-            $sum: { 
-              $subtract: ["$total", { $ifNull: ["$paidAmount", 0] }] 
-            } 
-          } 
-        } 
+    const result = await prisma.purchase.aggregate({
+      where: { status: "PENDING" },
+      _sum: {
+        total: true,
+        paidAmount: true,
       },
-    ]);
+    });
 
-    const total = result.length > 0 ? result[0].total : 0;
+    const totalSum = result._sum.total || 0;
+    const paidSum = result._sum.paidAmount || 0;
+    const pendingTotal = totalSum - paidSum;
 
-    return { success: true, data: total };
+    return { success: true, data: pendingTotal };
   } catch (error) {
     console.error("Error fetching pending bills total:", error);
     return { success: false, error: "Failed to fetch pending bills total" };
@@ -250,13 +245,10 @@ export async function getPendingBillsTotal(): Promise<ActionResponse<number>> {
 // MARK PURCHASE AS PAID
 export async function markPurchaseAsPaid(id: string): Promise<ActionResponse> {
   try {
-    await connectDB();
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return { success: false, error: "Invalid purchase ID" };
-    }
-
-    const purchase = await Purchase.findById(id);
+    const purchase = await prisma.purchase.findUnique({
+      where: { id },
+    });
+    
     if (!purchase) {
       return { success: false, error: "Purchase not found" };
     }
@@ -265,9 +257,13 @@ export async function markPurchaseAsPaid(id: string): Promise<ActionResponse> {
       return { success: false, error: "Purchase is already marked as paid" };
     }
 
-    purchase.status = "PAID";
-    purchase.paidAmount = purchase.total;
-    await purchase.save();
+    await prisma.purchase.update({
+      where: { id },
+      data: {
+        status: "PAID",
+        paidAmount: purchase.total,
+      },
+    });
 
     revalidatePath("/stock");
     revalidatePath("/pending-bills");
@@ -284,18 +280,14 @@ export async function getTotalStockPurchased(
   productId: string
 ): Promise<ActionResponse<number>> {
   try {
-    await connectDB();
+    const result = await prisma.purchase.aggregate({
+      where: { productId },
+      _sum: {
+        quantity: true,
+      },
+    });
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return { success: false, error: "Invalid product ID" };
-    }
-
-    const result = await Purchase.aggregate([
-      { $match: { productId: new mongoose.Types.ObjectId(productId) } },
-      { $group: { _id: null, totalQuantity: { $sum: "$quantity" } } },
-    ]);
-
-    const total = result.length > 0 ? result[0].totalQuantity : 0;
+    const total = result._sum.quantity || 0;
 
     return { success: true, data: total };
   } catch (error) {
@@ -313,50 +305,53 @@ export async function getPendingPurchasesWithFilters(
   }
 ): Promise<ActionResponse<PurchaseListItem[]>> {
   try {
-    await connectDB();
-
-    const query: any = { status: "PENDING" };
+    const where: any = { status: "PENDING" };
 
     // Server-side date filtering
     if (dateFilter?.type === "monthly" && dateFilter.month) {
       const [year, month] = dateFilter.month.split("-");
       const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
       const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
-      query.date = { $gte: startDate, $lte: endDate };
+      where.date = { gte: startDate, lte: endDate };
     }
 
     if (dateFilter?.type === "yearly" && dateFilter.year !== undefined) {
       // Financial year: April to March
       const fyStart = new Date(dateFilter.year, 3, 1); // April 1st
       const fyEnd = new Date(dateFilter.year + 1, 2, 31, 23, 59, 59, 999); // March 31st
-      query.date = { $gte: fyStart, $lte: fyEnd };
+      where.date = { gte: fyStart, lte: fyEnd };
     }
 
-    // Also filter for pending amount > 0
-    query.$expr = { $gt: [{ $subtract: ["$total", "$paidAmount"] }, 0] };
-
-    const purchases = await Purchase.find(query)
-      .populate("productId", "name")
-      .sort({ date: -1 });
-
-    const data: PurchaseListItem[] = purchases.map((purchase) => {
-      const paidAmount = purchase.paidAmount || 0;
-      const populatedProduct = purchase.productId as unknown as { _id: any; name: string };
-      return {
-        _id: purchase._id.toString(),
-        date: purchase.date.toISOString(),
-        supplierName: purchase.supplierName,
-        productId: populatedProduct._id?.toString() || purchase.productId.toString(),
-        productName: populatedProduct?.name || "Unknown",
-        quantity: purchase.quantity,
-        pricePerUnit: purchase.pricePerUnit,
-        total: purchase.total,
-        status: purchase.status,
-        initialPayment: purchase.initialPayment || 0,
-        paidAmount: paidAmount,
-        pendingAmount: purchase.total - paidAmount,
-      };
+    const purchases = await prisma.purchase.findMany({
+      where,
+      include: {
+        product: {
+          select: { name: true },
+        },
+      },
+      orderBy: { date: 'desc' },
     });
+
+    // Filter for pending amount > 0
+    const data: PurchaseListItem[] = purchases
+      .filter((purchase) => purchase.total - purchase.paidAmount > 0)
+      .map((purchase) => {
+        const paidAmount = purchase.paidAmount || 0;
+        return {
+          id: purchase.id,
+          date: purchase.date.toISOString(),
+          supplierName: purchase.supplierName,
+          productId: purchase.productId,
+          productName: purchase.product.name,
+          quantity: purchase.quantity,
+          pricePerUnit: purchase.pricePerUnit,
+          total: purchase.total,
+          status: purchase.status,
+          initialPayment: purchase.initialPayment || 0,
+          paidAmount: paidAmount,
+          pendingAmount: purchase.total - paidAmount,
+        };
+      });
 
     return { success: true, data };
   } catch (error) {
@@ -381,77 +376,58 @@ export async function getPendingBillsStats(
   }
 ): Promise<ActionResponse<PendingBillsStats>> {
   try {
-    await connectDB();
-
-    const matchQuery: any = { status: "PENDING" };
+    const where: any = { status: "PENDING" };
 
     // Apply date filters
     if (dateFilter?.type === "monthly" && dateFilter.month) {
       const [year, month] = dateFilter.month.split("-");
       const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
       const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
-      matchQuery.date = { $gte: startDate, $lte: endDate };
+      where.date = { gte: startDate, lte: endDate };
     }
 
     if (dateFilter?.type === "yearly" && dateFilter.year !== undefined) {
       const fyStart = new Date(dateFilter.year, 3, 1);
       const fyEnd = new Date(dateFilter.year + 1, 2, 31, 23, 59, 59, 999);
-      matchQuery.date = { $gte: fyStart, $lte: fyEnd };
+      where.date = { gte: fyStart, lte: fyEnd };
     }
 
-    const [totalStats, supplierStats] = await Promise.all([
-      // Total stats
-      Purchase.aggregate([
-        { $match: matchQuery },
-        {
-          $project: {
-            pendingAmount: { $subtract: ["$total", "$paidAmount"] },
-          },
-        },
-        { $match: { pendingAmount: { $gt: 0 } } },
-        {
-          $group: {
-            _id: null,
-            totalPending: { $sum: "$pendingAmount" },
-            count: { $sum: 1 },
-          },
-        },
-      ]),
-      // By supplier
-      Purchase.aggregate([
-        { $match: matchQuery },
-        {
-          $project: {
-            supplierName: 1,
-            pendingAmount: { $subtract: ["$total", "$paidAmount"] },
-          },
-        },
-        { $match: { pendingAmount: { $gt: 0 } } },
-        {
-          $group: {
-            _id: "$supplierName",
-            totalPending: { $sum: "$pendingAmount" },
-            count: { $sum: 1 },
-          },
-        },
-        { $sort: { totalPending: -1 } },
-      ]),
-    ]);
+    // Fetch all pending purchases
+    const purchases = await prisma.purchase.findMany({ where });
 
-    const total = totalStats[0]?.totalPending || 0;
-    const count = totalStats[0]?.count || 0;
-    const average = count > 0 ? total / count : 0;
+    // Filter for pending amount > 0 and calculate stats
+    const pendingPurchases = purchases.filter(p => p.total - p.paidAmount > 0);
+    
+    let totalPending = 0;
+    const supplierMap = new Map<string, { totalPending: number; count: number }>();
 
-    const bySupplier = supplierStats.map((stat) => ({
-      supplierName: stat._id || "Unknown",
-      totalPending: stat.totalPending,
-      count: stat.count,
-    }));
+    pendingPurchases.forEach(purchase => {
+      const pendingAmount = purchase.total - purchase.paidAmount;
+      totalPending += pendingAmount;
+
+      const supplierName = purchase.supplierName || "Unknown";
+      const existing = supplierMap.get(supplierName) || { totalPending: 0, count: 0 };
+      supplierMap.set(supplierName, {
+        totalPending: existing.totalPending + pendingAmount,
+        count: existing.count + 1,
+      });
+    });
+
+    const count = pendingPurchases.length;
+    const average = count > 0 ? totalPending / count : 0;
+
+    const bySupplier = Array.from(supplierMap.entries())
+      .map(([supplierName, stats]) => ({
+        supplierName,
+        totalPending: stats.totalPending,
+        count: stats.count,
+      }))
+      .sort((a, b) => b.totalPending - a.totalPending);
 
     return {
       success: true,
       data: {
-        totalPending: total,
+        totalPending,
         billCount: count,
         averageBill: average,
         bySupplier,
